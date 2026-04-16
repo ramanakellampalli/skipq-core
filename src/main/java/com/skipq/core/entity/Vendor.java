@@ -1,39 +1,37 @@
-package com.skipq.core.menu;
+package com.skipq.core.entity;
 
-import com.skipq.core.vendor.Vendor;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "menu_items")
+@Table(name = "vendors")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MenuItem {
+public class Vendor {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "vendor_id", nullable = false)
-    private Vendor vendor;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal price;
+    @Column(name = "is_open", nullable = false)
+    private boolean isOpen;
 
-    @Column(name = "is_available", nullable = false)
-    private boolean isAvailable;
+    @Column(name = "prep_time", nullable = false)
+    private int prepTime;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
