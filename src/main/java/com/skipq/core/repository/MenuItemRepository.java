@@ -1,4 +1,4 @@
-package com.skipq.core.menu;
+package com.skipq.core.repository;
 
 import com.skipq.core.entity.MenuItem;
 import org.springframework.data.jpa.repository.JpaRepository;

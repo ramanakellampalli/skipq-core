@@ -1,4 +1,4 @@
-package com.skipq.core.order;
+package com.skipq.core.repository;
 
 import com.skipq.core.common.OrderStatus;
 import com.skipq.core.entity.Order;

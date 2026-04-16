@@ -1,4 +1,4 @@
-package com.skipq.core.vendor;
+package com.skipq.core.repository;
 
 import com.skipq.core.entity.Vendor;
 import org.springframework.data.jpa.repository.JpaRepository;
