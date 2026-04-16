@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: ${DEV_DB_URL}
+    username: ${DEV_DB_USERNAME}
+    password: ${DEV_DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      idle-timeout: 30000
+      connection-timeout: 20000
+
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    com.skipq: DEBUG
+    org.hibernate.SQL: DEBUG
