@@ -11,4 +11,6 @@ public interface VendorRepository extends JpaRepository<Vendor, UUID> {
     List<Vendor> findAllByIsOpenTrue();
 
     Optional<Vendor> findByUserId(UUID userId);
+
+    Optional<Vendor> findByUserEmail(String email);
 }
