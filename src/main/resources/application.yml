@@ -15,6 +15,11 @@ spring:
     filter:
       order: 10
 
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: 86400000 # 24 hours
+
 server:
   port: 8080
 
