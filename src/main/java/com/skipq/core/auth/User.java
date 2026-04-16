@@ -27,8 +27,14 @@ public class User {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
+
+    @Column(name = "setup_token")
+    private String setupToken;
+
+    @Column(name = "setup_token_expires_at")
+    private LocalDateTime setupTokenExpiresAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
