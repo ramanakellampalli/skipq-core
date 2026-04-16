@@ -3,6 +3,7 @@ package com.skipq.core.auth;
 import com.skipq.core.auth.dto.AuthResponse;
 import com.skipq.core.auth.dto.LoginRequest;
 import com.skipq.core.auth.dto.RegisterRequest;
+import com.skipq.core.auth.dto.SetupPasswordRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,5 +25,10 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/setup-password")
+    public AuthResponse setupPassword(@Valid @RequestBody SetupPasswordRequest request) {
+        return authService.setupPassword(request);
     }
 }
