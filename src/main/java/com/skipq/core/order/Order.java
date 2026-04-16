@@ -1,7 +1,9 @@
-package com.skipq.core.entity;
+package com.skipq.core.order;
 
+import com.skipq.core.auth.User;
 import com.skipq.core.common.OrderStatus;
 import com.skipq.core.common.PaymentStatus;
+import com.skipq.core.vendor.Vendor;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

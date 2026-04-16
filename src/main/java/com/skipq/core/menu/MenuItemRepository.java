@@ -1,6 +1,5 @@
-package com.skipq.core.repository;
+package com.skipq.core.menu;
 
-import com.skipq.core.entity.MenuItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

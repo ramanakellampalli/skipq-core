@@ -1,6 +1,5 @@
-package com.skipq.core.repository;
+package com.skipq.core.auth;
 
-import com.skipq.core.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

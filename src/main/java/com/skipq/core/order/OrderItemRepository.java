@@ -1,6 +1,5 @@
-package com.skipq.core.repository;
+package com.skipq.core.order;
 
-import com.skipq.core.entity.OrderItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

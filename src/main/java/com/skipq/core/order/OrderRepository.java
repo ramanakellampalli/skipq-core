@@ -1,7 +1,6 @@
-package com.skipq.core.repository;
+package com.skipq.core.order;
 
 import com.skipq.core.common.OrderStatus;
-import com.skipq.core.entity.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
