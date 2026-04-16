@@ -1,6 +1,5 @@
-package com.skipq.core.order;
+package com.skipq.core.entity;
 
-import com.skipq.core.menu.MenuItem;
 import jakarta.persistence.*;
 import lombok.*;
 
