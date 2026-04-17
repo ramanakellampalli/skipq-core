@@ -2,7 +2,7 @@ package com.skipq.core.vendor;
 
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.dto.MenuItemResponse;
-import com.skipq.core.order.OrderItem;
+import com.skipq.core.order.Order;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.order.dto.OrderItemResponse;
 import com.skipq.core.order.dto.OrderResponse;
@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -47,7 +46,7 @@ public class VendorService {
     @Transactional(readOnly = true)
     public VendorDashboardResponse sync(String email) {
         // Query 1: vendor + orders + order_items + menu_item in one JOIN
-        List<com.skipq.core.order.Order> orders = orderRepository.findAllByVendorEmailWithItems(email);
+        List<Order> orders = orderRepository.findAllByVendorEmailWithItems(email);
 
         Vendor vendor = orders.isEmpty()
                 ? findByEmail(email)
