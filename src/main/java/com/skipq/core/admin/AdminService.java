@@ -1,17 +1,17 @@
 package com.skipq.core.admin;
 
 import com.skipq.core.admin.dto.AdminStatsResponse;
+import com.skipq.core.admin.dto.AdminSyncResponse;
 import com.skipq.core.admin.dto.CreateVendorRequest;
 import com.skipq.core.auth.User;
 import com.skipq.core.auth.UserRepository;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.notification.EmailService;
-import com.skipq.core.order.OrderItemRepository;
 import com.skipq.core.order.OrderRepository;
+import com.skipq.core.vendor.Vendor;
 import com.skipq.core.order.dto.OrderItemResponse;
 import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.order.dto.OrderStatsProjection;
-import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import com.skipq.core.vendor.dto.VendorResponse;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +31,6 @@ public class AdminService {
     private final UserRepository userRepository;
     private final VendorRepository vendorRepository;
     private final OrderRepository orderRepository;
-    private final OrderItemRepository orderItemRepository;
     private final EmailService emailService;
 
     @Transactional
@@ -52,14 +51,12 @@ public class AdminService {
 
         userRepository.save(user);
 
-        Vendor vendor = Vendor.builder()
+        vendorRepository.save(Vendor.builder()
                 .user(user)
                 .name(request.vendorName())
                 .isOpen(false)
                 .prepTime(request.defaultPrepTime())
-                .build();
-
-        vendorRepository.save(vendor);
+                .build());
 
         emailService.sendVendorInvite(request.email(), request.ownerName(), setupToken);
 
@@ -67,8 +64,8 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponse> getAllOrders() {
-        return orderRepository.findAllWithItems().stream()
+    public AdminSyncResponse sync() {
+        List<OrderResponse> orders = orderRepository.findAllWithItems().stream()
                 .map(o -> {
                     List<OrderItemResponse> items = o.getItems().stream()
                             .map(i -> new OrderItemResponse(
@@ -84,24 +81,19 @@ public class AdminService {
                             o.getEstimatedReadyAt(), o.getCreatedAt(), items
                     );
                 }).toList();
-    }
 
-    @Transactional(readOnly = true)
-    public List<VendorResponse> getVendors() {
-        return vendorRepository.findAll().stream()
+        List<VendorResponse> vendors = vendorRepository.findAll().stream()
                 .map(v -> new VendorResponse(v.getId(), v.getName(), v.isOpen(), v.getPrepTime()))
                 .toList();
-    }
 
-    @Transactional(readOnly = true)
-    public AdminStatsResponse getStats() {
-        OrderStatsProjection stats = orderRepository.getTodayStats();
-        long activeVendors = vendorRepository.countByIsOpenTrue();
-        return new AdminStatsResponse(
-                stats.getTotalOrders(),
-                activeVendors,
-                stats.getInProgress(),
-                stats.getRevenue()
+        OrderStatsProjection projection = orderRepository.getTodayStats();
+        AdminStatsResponse stats = new AdminStatsResponse(
+                projection.getTotalOrders(),
+                vendorRepository.countByIsOpenTrue(),
+                projection.getInProgress(),
+                projection.getRevenue()
         );
+
+        return new AdminSyncResponse(stats, vendors, orders);
     }
 }
