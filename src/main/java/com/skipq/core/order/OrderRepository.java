@@ -30,4 +30,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         WHERE CAST(o.createdAt AS date) = CURRENT_DATE
         """)
     OrderStatsProjection getTodayStats();
+
+    @Query("SELECT DISTINCT o FROM Order o JOIN FETCH o.vendor JOIN FETCH o.items i JOIN FETCH i.menuItem ORDER BY o.createdAt DESC")
+    List<Order> findAllWithItems();
 }

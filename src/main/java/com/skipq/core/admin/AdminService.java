@@ -6,16 +6,21 @@ import com.skipq.core.auth.User;
 import com.skipq.core.auth.UserRepository;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.notification.EmailService;
+import com.skipq.core.order.OrderItemRepository;
 import com.skipq.core.order.OrderRepository;
+import com.skipq.core.order.dto.OrderItemResponse;
+import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.order.dto.OrderStatsProjection;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
+import com.skipq.core.vendor.dto.VendorResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -26,6 +31,7 @@ public class AdminService {
     private final UserRepository userRepository;
     private final VendorRepository vendorRepository;
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final EmailService emailService;
 
     @Transactional
@@ -58,6 +64,33 @@ public class AdminService {
         emailService.sendVendorInvite(request.email(), request.ownerName(), setupToken);
 
         log.info("Vendor created: {} ({}), invite sent to {}", request.vendorName(), user.getId(), request.email());
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getAllOrders() {
+        return orderRepository.findAllWithItems().stream()
+                .map(o -> {
+                    List<OrderItemResponse> items = o.getItems().stream()
+                            .map(i -> new OrderItemResponse(
+                                    i.getMenuItem().getId(),
+                                    i.getMenuItem().getName(),
+                                    i.getQuantity(),
+                                    i.getUnitPrice(),
+                                    i.getUnitPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantity()))
+                            )).toList();
+                    return new OrderResponse(
+                            o.getId(), o.getVendor().getId(), o.getVendor().getName(),
+                            o.getStatus(), o.getPaymentStatus(), o.getTotalAmount(),
+                            o.getEstimatedReadyAt(), o.getCreatedAt(), items
+                    );
+                }).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<VendorResponse> getVendors() {
+        return vendorRepository.findAll().stream()
+                .map(v -> new VendorResponse(v.getId(), v.getName(), v.isOpen(), v.getPrepTime()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
