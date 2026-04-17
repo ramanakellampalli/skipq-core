@@ -87,7 +87,9 @@ public class OrderService {
         orderItems.forEach(item -> item.setOrder(order));
         orderItemRepository.saveAll(orderItems);
 
-        return toResponse(order, orderItems);
+        OrderResponse response = toResponse(order, orderItems);
+        messagingTemplate.convertAndSend("/topic/vendor/" + vendor.getId(), response);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -142,6 +144,7 @@ public class OrderService {
         OrderResponse response = toResponse(order, items);
 
         messagingTemplate.convertAndSend("/topic/orders/" + orderId, response);
+        messagingTemplate.convertAndSend("/topic/vendor/" + vendor.getId(), response);
 
         return response;
     }
