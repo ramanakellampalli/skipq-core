@@ -1,6 +1,7 @@
 package com.skipq.core.vendor;
 
 import com.skipq.core.vendor.dto.UpdateVendorRequest;
+import com.skipq.core.vendor.dto.VendorDashboardResponse;
 import com.skipq.core.vendor.dto.VendorResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,13 @@ import java.util.UUID;
 public class VendorController {
 
     private final VendorService vendorService;
+
+    // Vendor app — single call to load everything on login
+    @GetMapping("/api/v1/vendor/sync")
+    @PreAuthorize("hasRole('VENDOR')")
+    public VendorDashboardResponse sync(@AuthenticationPrincipal UserDetails userDetails) {
+        return vendorService.sync(userDetails.getUsername());
+    }
 
     // Vendor app — profile management
     @GetMapping("/api/v1/vendor/profile")
