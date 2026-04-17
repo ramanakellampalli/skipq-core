@@ -1,5 +1,6 @@
 package com.skipq.core.admin;
 
+import com.skipq.core.admin.dto.AdminSyncResponse;
 import com.skipq.core.admin.dto.CreateVendorRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,11 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     private final AdminService adminService;
+
+    @GetMapping("/sync")
+    public AdminSyncResponse sync() {
+        return adminService.sync();
+    }
 
     @PostMapping("/vendors")
     @ResponseStatus(HttpStatus.CREATED)
