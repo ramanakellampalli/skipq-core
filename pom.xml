@@ -26,10 +26,11 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
-		<!-- WebSocket (real-time vendor alerts) -->
+		<!-- Ably (real-time vendor alerts) -->
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-websocket</artifactId>
+			<groupId>io.ably</groupId>
+			<artifactId>ably-java</artifactId>
+			<version>1.2.43</version>
 		</dependency>
 
 		<!-- Database -->

@@ -6,11 +6,11 @@ import com.skipq.core.common.OrderStatus;
 import com.skipq.core.common.PaymentStatus;
 import com.skipq.core.menu.MenuItem;
 import com.skipq.core.menu.MenuItemRepository;
+import com.skipq.core.config.AblyService;
 import com.skipq.core.order.dto.*;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +28,7 @@ public class OrderService {
     private final UserRepository userRepository;
     private final VendorRepository vendorRepository;
     private final MenuItemRepository menuItemRepository;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final AblyService ablyService;
 
     @Transactional
     public OrderResponse placeOrder(String email, PlaceOrderRequest request) {
@@ -88,7 +88,7 @@ public class OrderService {
         orderItemRepository.saveAll(orderItems);
 
         OrderResponse response = toResponse(order, orderItems);
-        messagingTemplate.convertAndSend("/topic/vendor/" + vendor.getId(), response);
+        ablyService.publish("vendor:" + vendor.getId(), "order", response);
         return response;
     }
 
@@ -143,8 +143,7 @@ public class OrderService {
         List<OrderItem> items = orderItemRepository.findAllByOrderId(orderId);
         OrderResponse response = toResponse(order, items);
 
-        messagingTemplate.convertAndSend("/topic/orders/" + orderId, response);
-        messagingTemplate.convertAndSend("/topic/vendor/" + vendor.getId(), response);
+        ablyService.publish("vendor:" + vendor.getId(), "order", response);
 
         return response;
     }
