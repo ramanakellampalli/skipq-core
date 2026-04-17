@@ -13,20 +13,15 @@ public class EmailService {
 
     private final Resend resend;
     private final String from;
-    private final String deepLinkBaseUrl;
 
     public EmailService(
             @Value("${app.resend.api-key}") String apiKey,
-            @Value("${app.resend.from}") String from,
-            @Value("${app.deep-link.base-url}") String deepLinkBaseUrl) {
+            @Value("${app.resend.from}") String from) {
         this.resend = new Resend(apiKey);
         this.from = from;
-        this.deepLinkBaseUrl = deepLinkBaseUrl;
     }
 
     public void sendVendorInvite(String toEmail, String vendorName, String token) {
-        String setupLink = deepLinkBaseUrl + "?token=" + token;
-
         String html = """
                 <!DOCTYPE html>
                 <html lang="en">
@@ -76,26 +71,7 @@ public class EmailService {
                                 Welcome to SkipQ — the smart campus food ordering platform. Your vendor account has been created and is ready for you to take ownership.
                               </p>
                               <p style="margin:16px 0 0;font-size:15px;color:#4B5563;line-height:1.7;">
-                                Tap the button below in the <strong style="color:#111827;">SkipQ Vendor app</strong> to set your password and go live.
-                              </p>
-                            </td>
-                          </tr>
-
-                          <!-- CTA Button -->
-                          <tr>
-                            <td style="padding:32px 40px 0;">
-                              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                                <tr>
-                                  <td style="border-radius:10px;background:linear-gradient(135deg,#FF6B35 0%%,#FF8C42 100%%);box-shadow:0 4px 12px rgba(255,107,53,0.35);">
-                                    <a href="%s"
-                                       style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#FFFFFF;text-decoration:none;letter-spacing:0.2px;">
-                                      Set Up My Account →
-                                    </a>
-                                  </td>
-                                </tr>
-                              </table>
-                              <p style="margin:12px 0 0;font-size:12px;color:#9CA3AF;">
-                                Button not working? Open the SkipQ Vendor app and paste the token below.
+                                To get started: open the <strong style="color:#111827;">SkipQ Vendor app</strong>, tap <strong style="color:#111827;">Set up your account</strong> on the login screen, and enter the token below.
                               </p>
                             </td>
                           </tr>
@@ -157,7 +133,7 @@ public class EmailService {
                   </table>
                 </body>
                 </html>
-                """.formatted(vendorName, setupLink, token);
+                """.formatted(vendorName, token);
 
         CreateEmailOptions params = CreateEmailOptions.builder()
                 .from(from)
