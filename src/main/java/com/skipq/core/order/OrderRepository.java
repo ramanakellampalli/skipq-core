@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.UUID;
 
+
 public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     List<Order> findAllByUserId(UUID userId);
@@ -16,6 +17,6 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     List<Order> findAllByVendorIdAndStatus(UUID vendorId, OrderStatus status);
 
-    @Query("SELECT DISTINCT o FROM Order o JOIN FETCH o.items i JOIN FETCH i.menuItem WHERE o.vendor.id = :vendorId ORDER BY o.createdAt DESC")
-    List<Order> findAllByVendorIdWithItems(@Param("vendorId") UUID vendorId);
+    @Query("SELECT DISTINCT o FROM Order o JOIN FETCH o.vendor v JOIN FETCH o.items i JOIN FETCH i.menuItem WHERE v.user.email = :email ORDER BY o.createdAt DESC")
+    List<Order> findAllByVendorEmailWithItems(@Param("email") String email);
 }

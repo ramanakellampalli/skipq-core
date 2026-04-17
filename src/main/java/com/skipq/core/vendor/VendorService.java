@@ -46,10 +46,14 @@ public class VendorService {
 
     @Transactional(readOnly = true)
     public VendorDashboardResponse sync(String email) {
-        Vendor vendor = findByEmail(email);
+        // Query 1: vendor + orders + order_items + menu_item in one JOIN
+        List<com.skipq.core.order.Order> orders = orderRepository.findAllByVendorEmailWithItems(email);
 
-        List<OrderResponse> allOrders = orderRepository.findAllByVendorIdWithItems(vendor.getId())
-                .stream()
+        Vendor vendor = orders.isEmpty()
+                ? findByEmail(email)
+                : orders.get(0).getVendor();
+
+        List<OrderResponse> allOrders = orders.stream()
                 .map(order -> {
                     List<OrderItemResponse> itemResponses = order.getItems().stream()
                             .map(i -> new OrderItemResponse(
@@ -83,6 +87,7 @@ public class VendorService {
                           || o.status() == com.skipq.core.common.OrderStatus.REJECTED)
                 .toList();
 
+        // Query 2: menu items (independent dataset — cannot join without Cartesian product)
         List<MenuItemResponse> menuItems = menuItemRepository.findAllByVendorId(vendor.getId())
                 .stream()
                 .map(m -> new MenuItemResponse(m.getId(), m.getName(), m.getPrice(), m.isAvailable()))
