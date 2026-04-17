@@ -42,6 +42,14 @@ public class OrderService {
             throw new IllegalStateException("Vendor is currently closed");
         }
 
+        if (user.getRole() == com.skipq.core.common.UserRole.VENDOR) {
+            vendorRepository.findByUserEmail(email).ifPresent(ownVendor -> {
+                if (ownVendor.getId().equals(vendor.getId())) {
+                    throw new IllegalArgumentException("You cannot place an order at your own store");
+                }
+            });
+        }
+
         List<OrderItem> orderItems = request.items().stream().map(itemReq -> {
             MenuItem menuItem = menuItemRepository.findById(itemReq.menuItemId())
                     .orElseThrow(() -> new IllegalArgumentException("Menu item not found: " + itemReq.menuItemId()));

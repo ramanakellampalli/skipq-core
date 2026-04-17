@@ -34,13 +34,13 @@ public class VendorController {
 
     // Student app — browse vendors
     @GetMapping("/api/v1/vendors")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
     public List<VendorResponse> getOpenVendors() {
         return vendorService.getOpenVendors();
     }
 
     @GetMapping("/api/v1/vendors/{vendorId}")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
     public VendorResponse getVendor(@PathVariable UUID vendorId) {
         return vendorService.getById(vendorId);
     }
