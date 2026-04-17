@@ -22,7 +22,7 @@ public class OrderController {
 
     @PostMapping("/api/v1/orders")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
     public OrderResponse placeOrder(
             @AuthenticationPrincipal UserDetails user,
             @Valid @RequestBody PlaceOrderRequest request) {
@@ -30,13 +30,13 @@ public class OrderController {
     }
 
     @GetMapping("/api/v1/orders")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
     public List<OrderResponse> getMyOrders(@AuthenticationPrincipal UserDetails user) {
         return orderService.getMyOrders(user.getUsername());
     }
 
     @GetMapping("/api/v1/orders/{orderId}")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
     public OrderResponse getOrder(
             @AuthenticationPrincipal UserDetails user,
             @PathVariable UUID orderId) {
