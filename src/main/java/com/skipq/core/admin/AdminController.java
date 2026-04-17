@@ -1,5 +1,6 @@
 package com.skipq.core.admin;
 
+import com.skipq.core.admin.dto.AdminStatsResponse;
 import com.skipq.core.admin.dto.CreateVendorRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,5 +20,10 @@ public class AdminController {
     @ResponseStatus(HttpStatus.CREATED)
     public void createVendor(@Valid @RequestBody CreateVendorRequest request) {
         adminService.createVendor(request);
+    }
+
+    @GetMapping("/stats")
+    public AdminStatsResponse getStats() {
+        return adminService.getStats();
     }
 }

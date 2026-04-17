@@ -1,10 +1,13 @@
 package com.skipq.core.admin;
 
+import com.skipq.core.admin.dto.AdminStatsResponse;
 import com.skipq.core.admin.dto.CreateVendorRequest;
 import com.skipq.core.auth.User;
 import com.skipq.core.auth.UserRepository;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.notification.EmailService;
+import com.skipq.core.order.OrderRepository;
+import com.skipq.core.order.dto.OrderStatsProjection;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +25,7 @@ public class AdminService {
 
     private final UserRepository userRepository;
     private final VendorRepository vendorRepository;
+    private final OrderRepository orderRepository;
     private final EmailService emailService;
 
     @Transactional
@@ -54,5 +58,17 @@ public class AdminService {
         emailService.sendVendorInvite(request.email(), request.ownerName(), setupToken);
 
         log.info("Vendor created: {} ({}), invite sent to {}", request.vendorName(), user.getId(), request.email());
+    }
+
+    @Transactional(readOnly = true)
+    public AdminStatsResponse getStats() {
+        OrderStatsProjection stats = orderRepository.getTodayStats();
+        long activeVendors = vendorRepository.countByIsOpenTrue();
+        return new AdminStatsResponse(
+                stats.getTotalOrders(),
+                activeVendors,
+                stats.getInProgress(),
+                stats.getRevenue()
+        );
     }
 }
