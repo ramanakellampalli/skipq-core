@@ -33,4 +33,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     @Query("SELECT DISTINCT o FROM Order o JOIN FETCH o.vendor JOIN FETCH o.items i JOIN FETCH i.menuItem ORDER BY o.createdAt DESC")
     List<Order> findAllWithItems();
+
+    @Query("SELECT DISTINCT o FROM Order o JOIN FETCH o.vendor JOIN FETCH o.items i JOIN FETCH i.menuItem WHERE o.user.email = :email ORDER BY o.createdAt DESC")
+    List<Order> findAllByUserEmailWithItems(@Param("email") String email);
 }

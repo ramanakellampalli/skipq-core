@@ -10,6 +10,8 @@ public interface VendorRepository extends JpaRepository<Vendor, UUID> {
 
     List<Vendor> findAllByIsOpenTrue();
 
+    List<Vendor> findAllByOrderByIsOpenDesc();
+
     long countByIsOpenTrue();
 
     Optional<Vendor> findByUserId(UUID userId);

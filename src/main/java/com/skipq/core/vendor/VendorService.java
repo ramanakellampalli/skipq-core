@@ -102,6 +102,13 @@ public class VendorService {
                 .toList();
     }
 
+    public List<VendorResponse> getAllVendors() {
+        return vendorRepository.findAllByOrderByIsOpenDesc()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     public VendorResponse getById(UUID vendorId) {
         return vendorRepository.findById(vendorId)
                 .map(this::toResponse)
