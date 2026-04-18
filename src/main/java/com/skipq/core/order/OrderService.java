@@ -183,23 +183,47 @@ public class OrderService {
                 ))
                 .toList();
 
-        return new OrderResponse(
-                order.getId(),
+        var vendor = new OrderResponse.VendorInfo(
                 order.getVendor().getId(),
-                order.getVendor().getName(),
+                order.getVendor().getName()
+        );
+
+        var state = new OrderResponse.OrderState(
                 order.getStatus(),
-                order.getPaymentStatus(),
-                order.getSubtotal(),
+                order.getPaymentStatus()
+        );
+
+        var tax = new OrderResponse.TaxBreakdown(
                 order.getCgst(),
                 order.getSgst(),
                 order.getIgst(),
-                order.getTaxAmount(),
+                order.getTaxAmount()
+        );
+
+        var fees = new OrderResponse.Fees(
                 order.getPlatformFee(),
                 order.getPaymentTerminalFee(),
-                order.getTotalServiceFee(),
-                order.getTotalAmount(),
-                order.getEstimatedReadyAt(),
+                order.getTotalServiceFee()
+        );
+
+        var pricing = new OrderResponse.Pricing(
+                order.getSubtotal(),
+                tax,
+                fees,
+                order.getTotalAmount()
+        );
+
+        var timeline = new OrderResponse.Timeline(
                 order.getCreatedAt(),
+                order.getEstimatedReadyAt()
+        );
+
+        return new OrderResponse(
+                order.getId(),
+                vendor,
+                state,
+                pricing,
+                timeline,
                 itemResponses
         );
     }

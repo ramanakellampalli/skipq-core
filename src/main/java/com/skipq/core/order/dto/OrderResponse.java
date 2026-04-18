@@ -10,20 +10,35 @@ import java.util.UUID;
 
 public record OrderResponse(
         UUID id,
-        UUID vendorId,
-        String vendorName,
-        OrderStatus status,
-        PaymentStatus paymentStatus,
-        BigDecimal subtotal,
-        BigDecimal cgst,
-        BigDecimal sgst,
-        BigDecimal igst,
-        BigDecimal taxAmount,
-        BigDecimal platformFee,
-        BigDecimal paymentTerminalFee,
-        BigDecimal totalServiceFee,
-        BigDecimal totalAmount,
-        LocalDateTime estimatedReadyAt,
-        LocalDateTime createdAt,
+        VendorInfo vendor,
+        OrderState state,
+        Pricing pricing,
+        Timeline timeline,
         List<OrderItemResponse> items
-) {}
+) {
+    public record VendorInfo(UUID id, String name) {}
+
+    public record OrderState(OrderStatus orderStatus, PaymentStatus paymentStatus) {}
+
+    public record Pricing(
+            BigDecimal subtotal,
+            TaxBreakdown tax,
+            Fees fees,
+            BigDecimal totalAmount
+    ) {}
+
+    public record TaxBreakdown(
+            BigDecimal cgst,
+            BigDecimal sgst,
+            BigDecimal igst,
+            BigDecimal totalTax
+    ) {}
+
+    public record Fees(
+            BigDecimal platformFee,
+            BigDecimal paymentTerminalFee,
+            BigDecimal totalServiceFee
+    ) {}
+
+    public record Timeline(LocalDateTime createdAt, LocalDateTime estimatedReadyAt) {}
+}
