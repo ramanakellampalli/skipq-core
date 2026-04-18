@@ -75,11 +75,13 @@ public class AdminService {
                                     i.getUnitPrice(),
                                     i.getUnitPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantity()))
                             )).toList();
-                    return new OrderResponse(
-                            o.getId(), o.getVendor().getId(), o.getVendor().getName(),
-                            o.getStatus(), o.getPaymentStatus(), o.getTotalAmount(),
-                            o.getEstimatedReadyAt(), o.getCreatedAt(), items
-                    );
+                    var vendorInfo = new OrderResponse.VendorInfo(o.getVendor().getId(), o.getVendor().getName());
+                    var state      = new OrderResponse.OrderState(o.getStatus(), o.getPaymentStatus());
+                    var tax        = new OrderResponse.TaxBreakdown(o.getCgst(), o.getSgst(), o.getIgst(), o.getTaxAmount());
+                    var fees       = new OrderResponse.Fees(o.getPlatformFee(), o.getPaymentTerminalFee(), o.getTotalServiceFee());
+                    var pricing    = new OrderResponse.Pricing(o.getSubtotal(), tax, fees, o.getTotalAmount());
+                    var timeline   = new OrderResponse.Timeline(o.getCreatedAt(), o.getEstimatedReadyAt());
+                    return new OrderResponse(o.getId(), vendorInfo, state, pricing, timeline, items);
                 }).toList();
 
         List<VendorResponse> vendors = vendorRepository.findAll().stream()
