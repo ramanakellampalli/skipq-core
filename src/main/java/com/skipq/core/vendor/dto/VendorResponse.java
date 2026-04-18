@@ -6,5 +6,9 @@ public record VendorResponse(
         UUID id,
         String name,
         boolean isOpen,
-        int prepTime
+        int prepTime,
+        String businessName,
+        boolean gstRegistered,
+        String gstin,
+        boolean kycApproved
 ) {}

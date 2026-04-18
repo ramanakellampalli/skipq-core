@@ -62,6 +62,13 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
+		<!-- Razorpay -->
+		<dependency>
+			<groupId>com.razorpay</groupId>
+			<artifactId>razorpay-java</artifactId>
+			<version>1.4.5</version>
+		</dependency>
+
 		<!-- Resend (email) -->
 		<dependency>
 			<groupId>com.resend</groupId>

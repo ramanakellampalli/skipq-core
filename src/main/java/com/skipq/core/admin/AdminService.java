@@ -83,7 +83,8 @@ public class AdminService {
                 }).toList();
 
         List<VendorResponse> vendors = vendorRepository.findAll().stream()
-                .map(v -> new VendorResponse(v.getId(), v.getName(), v.isOpen(), v.getPrepTime()))
+                .map(v -> new VendorResponse(v.getId(), v.getName(), v.isOpen(), v.getPrepTime(),
+                        v.getBusinessName(), v.isGstRegistered(), v.getGstin(), v.isKycApproved()))
                 .toList();
 
         OrderStatsProjection projection = orderRepository.getTodayStats();
