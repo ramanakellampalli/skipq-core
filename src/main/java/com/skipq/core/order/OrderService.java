@@ -144,6 +144,7 @@ public class OrderService {
         OrderResponse response = toResponse(order, items);
 
         ablyService.publish("vendor:" + vendor.getId(), "order", response);
+        ablyService.publish("order:" + order.getId(), "status", response);
 
         return response;
     }
