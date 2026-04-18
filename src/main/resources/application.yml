@@ -25,6 +25,7 @@ app:
   razorpay:
     key-id: ${RAZOR_TEST_ID}
     key-secret: ${RAZOR_TEST_SECRET}
+    webhook-secret: ${RAZOR_WEBHOOK_SECRET}
   deep-link:
     base-url: ${DEEP_LINK_BASE_URL}
 
