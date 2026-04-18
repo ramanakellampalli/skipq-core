@@ -45,6 +45,30 @@ public class Order {
     @Column(name = "payment_ref", length = 255)
     private String paymentRef;
 
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal subtotal;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal cgst;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal sgst;
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal igst;
+
+    @Column(name = "tax_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal taxAmount;
+
+    @Column(name = "platform_fee", nullable = false, precision = 10, scale = 2)
+    private BigDecimal platformFee;
+
+    @Column(name = "payment_terminal_fee", nullable = false, precision = 10, scale = 2)
+    private BigDecimal paymentTerminalFee;
+
+    @Column(name = "total_service_fee", nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalServiceFee;
+
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 

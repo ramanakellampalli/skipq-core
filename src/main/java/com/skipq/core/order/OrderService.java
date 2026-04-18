@@ -69,16 +69,39 @@ public class OrderService {
                     .build();
         }).toList();
 
-        BigDecimal total = orderItems.stream()
+        BigDecimal subtotal = orderItems.stream()
                 .map(i -> i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal rate025 = new BigDecimal("0.025");
+        BigDecimal rate03  = new BigDecimal("0.03");
+        BigDecimal rate02  = new BigDecimal("0.02");
+
+        BigDecimal cgst = vendor.isGstRegistered() ? subtotal.multiply(rate025).setScale(2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal sgst = vendor.isGstRegistered() ? subtotal.multiply(rate025).setScale(2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        BigDecimal igst = BigDecimal.ZERO; // inter-state not implemented yet
+        BigDecimal taxAmount = cgst.add(sgst).add(igst);
+
+        BigDecimal platformFee        = subtotal.multiply(rate03).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal paymentTerminalFee = subtotal.multiply(rate02).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal totalServiceFee    = platformFee.add(paymentTerminalFee);
+
+        BigDecimal totalAmount = subtotal.add(taxAmount).add(totalServiceFee);
 
         Order order = Order.builder()
                 .user(user)
                 .vendor(vendor)
                 .status(OrderStatus.PENDING)
                 .paymentStatus(PaymentStatus.PENDING)
-                .totalAmount(total)
+                .subtotal(subtotal)
+                .cgst(cgst)
+                .sgst(sgst)
+                .igst(igst)
+                .taxAmount(taxAmount)
+                .platformFee(platformFee)
+                .paymentTerminalFee(paymentTerminalFee)
+                .totalServiceFee(totalServiceFee)
+                .totalAmount(totalAmount)
                 .estimatedReadyAt(LocalDateTime.now().plusMinutes(vendor.getPrepTime()))
                 .build();
 
@@ -166,6 +189,14 @@ public class OrderService {
                 order.getVendor().getName(),
                 order.getStatus(),
                 order.getPaymentStatus(),
+                order.getSubtotal(),
+                order.getCgst(),
+                order.getSgst(),
+                order.getIgst(),
+                order.getTaxAmount(),
+                order.getPlatformFee(),
+                order.getPaymentTerminalFee(),
+                order.getTotalServiceFee(),
                 order.getTotalAmount(),
                 order.getEstimatedReadyAt(),
                 order.getCreatedAt(),
