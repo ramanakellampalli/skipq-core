@@ -63,27 +63,25 @@ public class VendorService {
                                     i.getUnitPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantity()))
                             ))
                             .toList();
-                    return new OrderResponse(
-                            order.getId(),
-                            vendor.getId(),
-                            vendor.getName(),
-                            order.getStatus(),
-                            order.getPaymentStatus(),
-                            order.getTotalAmount(),
-                            order.getEstimatedReadyAt(),
-                            order.getCreatedAt(),
-                            itemResponses
-                    );
+
+                    var vendorInfo = new OrderResponse.VendorInfo(order.getVendor().getId(), order.getVendor().getName());
+                    var state      = new OrderResponse.OrderState(order.getStatus(), order.getPaymentStatus());
+                    var tax        = new OrderResponse.TaxBreakdown(order.getCgst(), order.getSgst(), order.getIgst(), order.getTaxAmount());
+                    var fees       = new OrderResponse.Fees(order.getPlatformFee(), order.getPaymentTerminalFee(), order.getTotalServiceFee());
+                    var pricing    = new OrderResponse.Pricing(order.getSubtotal(), tax, fees, order.getTotalAmount());
+                    var timeline   = new OrderResponse.Timeline(order.getCreatedAt(), order.getEstimatedReadyAt());
+
+                    return new OrderResponse(order.getId(), vendorInfo, state, pricing, timeline, itemResponses);
                 })
                 .toList();
 
         List<OrderResponse> activeOrders = allOrders.stream()
-                .filter(o -> o.status() != com.skipq.core.common.OrderStatus.COMPLETED
-                          && o.status() != com.skipq.core.common.OrderStatus.REJECTED)
+                .filter(o -> o.state().orderStatus() != com.skipq.core.common.OrderStatus.COMPLETED
+                          && o.state().orderStatus() != com.skipq.core.common.OrderStatus.REJECTED)
                 .toList();
         List<OrderResponse> pastOrders = allOrders.stream()
-                .filter(o -> o.status() == com.skipq.core.common.OrderStatus.COMPLETED
-                          || o.status() == com.skipq.core.common.OrderStatus.REJECTED)
+                .filter(o -> o.state().orderStatus() == com.skipq.core.common.OrderStatus.COMPLETED
+                          || o.state().orderStatus() == com.skipq.core.common.OrderStatus.REJECTED)
                 .toList();
 
         // Query 2: menu items (independent dataset — cannot join without Cartesian product)
