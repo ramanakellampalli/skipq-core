@@ -1,7 +1,9 @@
 package com.skipq.core.admin;
 
 import com.skipq.core.admin.dto.AdminSyncResponse;
+import com.skipq.core.admin.dto.CreateCampusRequest;
 import com.skipq.core.admin.dto.CreateVendorRequest;
+import com.skipq.core.campus.dto.CampusResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,12 @@ public class AdminController {
     @GetMapping("/sync")
     public AdminSyncResponse sync() {
         return adminService.sync();
+    }
+
+    @PostMapping("/campuses")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CampusResponse createCampus(@Valid @RequestBody CreateCampusRequest request) {
+        return adminService.createCampus(request);
     }
 
     @PostMapping("/vendors")

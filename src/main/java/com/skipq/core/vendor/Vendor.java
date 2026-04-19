@@ -1,6 +1,7 @@
 package com.skipq.core.vendor;
 
 import com.skipq.core.auth.User;
+import com.skipq.core.campus.Campus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -24,6 +25,10 @@ public class Vendor {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "campus_id", nullable = false)
+    private Campus campus;
 
     @Column(nullable = false, length = 100)
     private String name;
