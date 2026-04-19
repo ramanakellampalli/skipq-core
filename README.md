@@ -1,138 +1,151 @@
-# SkipQ — Backend API
+<p align="center">
+  <h1 align="center">⚡ SkipQ — Backend API</h1>
+  <p align="center">Skip the queue. Order ahead at your campus.</p>
+</p>
 
-> Skip the queue. Order ahead at your campus.
+<p align="center">
+  <img src="https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=openjdk&logoColor=white" />
+  <img src="https://img.shields.io/badge/Spring_Boot-3.4-6DB33F?style=for-the-badge&logo=spring&logoColor=white" />
+  <img src="https://img.shields.io/badge/PostgreSQL-Neon-00E5CC?style=for-the-badge&logo=postgresql&logoColor=white" />
+  <img src="https://img.shields.io/badge/Cloud_Run-GCP-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white" />
+</p>
 
-The core backend powering SkipQ — a campus food ordering platform built for universities. Students order ahead from campus vendors, vendors manage orders in real time, and admins oversee the platform.
-
-Built with **Spring Boot 3**, **PostgreSQL**, and deployed on **Google Cloud Run** with zero-downtime CI/CD.
+<p align="center">
+  <img src="https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white" />
+  <img src="https://img.shields.io/badge/Real--time-Ably-FF5416?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Payments-Razorpay-02042B?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Docs-Swagger_UI-85EA2D?style=for-the-badge&logo=swagger&logoColor=black" />
+</p>
 
 ---
 
-## Tech Stack
+## What is SkipQ?
 
-| Layer | Technology |
-|-------|-----------|
-| Runtime | Java 21 / Spring Boot 3.4 |
-| Database | PostgreSQL (Neon) + Flyway migrations |
-| Auth | Spring Security + JWT |
-| Real-time | Ably (push to vendor app) |
-| Email | Resend (transactional) |
-| Payments | Razorpay |
-| Deploy | Google Cloud Run + GitHub Actions |
-| Docs | SpringDoc OpenAPI (Swagger UI) |
+SkipQ is a campus food ordering platform. Students order ahead from campus vendors, vendors manage orders in real time, and admins oversee the whole platform. No more standing in queues between classes.
+
+This repo is the **core backend** — a single Spring Boot service that powers all three client apps.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│  Student App  │  Vendor App  │  Admin Hub │
-└──────────────┬──────────────┬────────────┘
-               │              │
-        ┌──────▼──────────────▼──────┐
-        │   Cloud Run (Spring Boot)   │
-        │   /api/v1/*                 │
-        └──────┬──────────────┬───────┘
-               │              │
-        ┌──────▼──────┐ ┌─────▼──────┐
-        │  PostgreSQL  │ │    Ably    │
-        │   (Neon)     │ │ (real-time)│
-        └─────────────┘ └────────────┘
+┌──────────────────────────────────────────────────┐
+│   Student App     Vendor Hub      Admin Hub       │
+│  (React Native)  (React Native)    (React)        │
+└───────────┬──────────────┬─────────────┬──────────┘
+            │              │             │
+            └──────────────▼─────────────┘
+                   Cloud Run · Spring Boot
+                      /api/v1/*
+            ┌──────────────▼─────────────┐
+            │                            │
+     ┌──────▼──────┐           ┌─────────▼──────┐
+     │  PostgreSQL  │           │      Ably      │
+     │   (Neon)    │           │  (real-time)   │
+     └─────────────┘           └────────────────┘
 ```
 
 ---
 
-## API Reference
+## API at a Glance
 
-Full interactive docs available at `/swagger-ui.html` on any running instance.
+> Full interactive docs at `/swagger-ui.html` on any running instance.
 
-| Prefix | Role | Description |
-|--------|------|-------------|
+| Prefix | Who | Purpose |
+|--------|-----|---------|
 | `/api/v1/auth` | Public | Register, login, OTP verify, vendor setup |
-| `/api/v1/admin` | ADMIN | Sync dashboard, manage campuses and vendors |
-| `/api/v1/vendor` | VENDOR | Sync, menu CRUD, order status updates |
-| `/api/v1/student` | STUDENT | Sync, browse vendors, place orders |
+| `/api/v1/admin` | Admin | Campus + vendor management, platform sync |
+| `/api/v1/vendor` | Vendor | Menu CRUD, order status, store profile |
+| `/api/v1/student` | Student | Browse vendors, place & track orders |
 
-### Auth Endpoints
+<details>
+<summary><strong>Auth endpoints</strong></summary>
 
 ```
-POST  /api/v1/auth/register       → create student account, sends OTP to email
-POST  /api/v1/auth/verify-otp     → verify email OTP, returns JWT
-POST  /api/v1/auth/login          → email + password, returns JWT
+POST  /api/v1/auth/register       → create student account, sends OTP
+POST  /api/v1/auth/verify-otp     → verify OTP, returns JWT
+POST  /api/v1/auth/login          → email + password → JWT
 POST  /api/v1/auth/setup-account  → vendor onboarding via invite token
 POST  /api/v1/auth/setup-password → admin password setup via invite token
 ```
+</details>
 
-### Student Flow
+<details>
+<summary><strong>Student endpoints</strong></summary>
 
 ```
-POST  /api/v1/student/orders      → place order
 GET   /api/v1/student/sync        → vendors + active order + past orders
 GET   /api/v1/student/menu/{id}   → vendor menu
+POST  /api/v1/student/orders      → place an order
 ```
+</details>
 
-### Vendor Flow
+<details>
+<summary><strong>Vendor endpoints</strong></summary>
 
 ```
-GET   /api/v1/vendor/sync         → profile + orders + menu
-PATCH /api/v1/vendor/profile
-POST  /api/v1/vendor/menu
-PATCH /api/v1/vendor/menu/{id}
+GET    /api/v1/vendor/sync
+PATCH  /api/v1/vendor/profile
+POST   /api/v1/vendor/menu
+PATCH  /api/v1/vendor/menu/{id}
 DELETE /api/v1/vendor/menu/{id}
-PATCH /api/v1/vendor/orders/{id}/status
+PATCH  /api/v1/vendor/orders/{id}/status
 ```
+</details>
 
-### Admin Flow
+<details>
+<summary><strong>Admin endpoints</strong></summary>
 
 ```
 GET   /api/v1/admin/sync          → stats + campuses + vendors + orders
 POST  /api/v1/admin/campuses      → add a new campus
 POST  /api/v1/admin/vendors       → create vendor + trigger onboarding
 ```
+</details>
 
 ---
 
-## Campus-Based Access
+## Key Features
 
-SkipQ is multi-campus. Each campus has an associated email domain (e.g. `srmap.edu.in`). Students are automatically assigned to a campus on registration based on their email. Vendors are tied to a campus at creation time. Students can only order from vendors on their campus.
+### 🏫 Campus-Based Access
+Every campus has an affiliated email domain (e.g. `srmap.edu.in`). Students are auto-assigned to their campus on registration. Vendors are tied to a campus. Students only see vendors on their campus — no cross-campus orders.
 
----
+### 🔐 Auth Flow
+- **Students** — register with campus email + password → OTP verification (one-time, on signup only) → JWT login from then on
+- **Vendors** — admin creates account → invite email with deep link → vendor sets up password + business details
+- **Admins** — seeded directly in DB
 
-## Real-Time Orders
-
-When a student places an order, the backend publishes to the `vendor:{vendorId}` Ably channel. The vendor app receives the order instantly without polling. Status updates from the vendor propagate back the same way.
+### ⚡ Real-Time Orders
+Orders are pushed to vendors via **Ably** the instant a student places one. No polling. The vendor app subscribes to `vendor:{vendorId}` on login and receives events in under a second.
 
 ---
 
 ## Environments
 
-| Environment | Trigger | Database |
-|-------------|---------|---------|
-| **Dev** | Auto-deploy on push to `main` | Neon dev branch |
+| Environment | Deploy Trigger | Database |
+|-------------|---------------|----------|
+| **Dev** | Auto on push to `main` | Neon dev branch |
 | **Prod** | Manual `workflow_dispatch` | Neon main branch |
 
-All secrets are stored in **GCP Secret Manager** and injected at runtime via `--set-secrets`.
+All secrets live in **GCP Secret Manager**, injected at runtime via `--set-secrets`.
 
 ---
 
 ## Local Development
 
 ### Prerequisites
-
-- Java 21
-- Maven
-- PostgreSQL (or a Neon account)
+- Java 21, Maven
+- PostgreSQL or a [Neon](https://neon.tech) account
 
 ### Run
 
 ```bash
-# Clone
 git clone https://github.com/ramanakellampalli/skipq-core.git
 cd skipq-core
 
-# Set environment variables
-export JWT_SECRET=your-secret
+# Copy and fill in your values
+export JWT_SECRET=...
 export PROD_DB_URL=jdbc:postgresql://...
 export PROD_DB_USERNAME=...
 export PROD_DB_PASSWORD=...
@@ -144,52 +157,31 @@ export RAZOR_TEST_SECRET=...
 export RAZOR_WEBHOOK_SECRET=...
 export DEEP_LINK_BASE_URL=skipq://
 
-# Run with dev profile (enables OTP bypass + test domain)
+# Run in dev mode — enables OTP bypass and test email domain
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 ---
 
-## Dev Testing
+## Dev Testing Shortcuts
 
-The `dev` Spring profile enables testing shortcuts so you don't need real email accounts.
+The `dev` Spring profile (`otp.bypass=true`) enables shortcuts so you can test without real email accounts.
 
-### Students
+### 🎓 Students
 
-| What | Value |
-|------|-------|
-| Email domain | Any `@test.skipq.dev` address (e.g. `alice@test.skipq.dev`) |
-| OTP code | Always `123456` |
+| | |
+|---|---|
+| **Email** | Any `@test.skipq.dev` address — e.g. `alice@test.skipq.dev` |
+| **OTP** | Always `123456` |
 
-### Vendors
+### 🏪 Vendors
 
-Vendors created via `POST /admin/vendors` when running in dev profile are immediately usable — no invite email is sent.
+Create via admin hub or Swagger → login immediately, no email.
 
-| What | Value |
-|------|-------|
-| Email | Any address (e.g. `vendor1@test.skipq.dev`) |
-| Password | `Test@1234` |
-| Business details | Pre-filled with dummy values |
-
-Create via admin hub or Swagger, then log straight into the vendor app.
-
-### Dev Profile Config (`application-dev.yml`)
-
-```yaml
-otp:
-  bypass: true
-  fixed-code: "123456"
-  allowed-test-domain: test.skipq.dev
-```
-
----
-
-## Database Migrations
-
-Managed by **Flyway**. Migration files live in `src/main/resources/db/migration/`.
-
-- Dev and prod run against separate Neon branches
-- `baseline-version=2` — V1 and V2 were applied manually before Flyway was introduced; only V3+ auto-run
+| | |
+|---|---|
+| **Email** | Any address — e.g. `vendor1@test.skipq.dev` |
+| **Password** | `Test@1234` |
 
 ---
 
@@ -197,12 +189,19 @@ Managed by **Flyway**. Migration files live in `src/main/resources/db/migration/
 
 ```
 src/main/java/com/skipq/core/
-├── admin/          # Admin sync, campus and vendor management
-├── auth/           # JWT, registration, OTP, login
-├── campus/         # Campus entity and repository
+├── admin/          # Platform management: campuses, vendors, stats
+├── auth/           # JWT, OTP, registration, login
+├── campus/         # Campus entity and email-domain lookup
 ├── config/         # Security, Swagger, Razorpay, Ably
-├── notification/   # Email via Resend
-├── order/          # Order placement and status
-├── student/        # Student sync and vendor browsing
+├── notification/   # Transactional email via Resend
+├── order/          # Order placement and lifecycle
+├── student/        # Student sync and vendor discovery
 └── vendor/         # Vendor profile, menu, orders
 ```
+
+---
+
+## Database Migrations
+
+Managed by **Flyway**. Files in `src/main/resources/db/migration/`.
+Dev and prod run against separate **Neon branches** for full isolation.
