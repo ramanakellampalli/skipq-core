@@ -17,6 +17,8 @@ import com.skipq.core.vendor.VendorRepository;
 import com.skipq.core.vendor.dto.VendorResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,11 +31,17 @@ import java.util.UUID;
 @Slf4j
 public class AdminService {
 
+    private static final String DEV_VENDOR_PASSWORD = "Test@1234";
+
     private final UserRepository userRepository;
     private final VendorRepository vendorRepository;
     private final CampusRepository campusRepository;
     private final OrderRepository orderRepository;
     private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
+
+    @Value("${otp.bypass:false}")
+    private boolean bypass;
 
     @Transactional
     public CampusResponse createCampus(CreateCampusRequest request) {
@@ -55,30 +63,51 @@ public class AdminService {
         Campus campus = campusRepository.findById(request.campusId())
                 .orElseThrow(() -> new IllegalArgumentException("Campus not found: " + request.campusId()));
 
-        String setupToken = UUID.randomUUID().toString();
-
-        User user = User.builder()
-                .name(request.ownerName())
-                .email(request.email())
-                .role(UserRole.VENDOR)
-                .setupToken(setupToken)
-                .setupTokenExpiresAt(LocalDateTime.now().plusHours(24))
-                .build();
-
-        userRepository.save(user);
-
-        vendorRepository.save(Vendor.builder()
-                .user(user)
+        User user;
+        Vendor.VendorBuilder vendorBuilder = Vendor.builder()
                 .campus(campus)
                 .name(request.vendorName())
                 .isOpen(false)
-                .prepTime(request.defaultPrepTime())
-                .build());
+                .prepTime(request.defaultPrepTime());
 
-        emailService.sendVendorInvite(request.email(), request.ownerName(), setupToken);
+        if (bypass) {
+            user = User.builder()
+                    .name(request.ownerName())
+                    .email(request.email())
+                    .role(UserRole.VENDOR)
+                    .passwordHash(passwordEncoder.encode(DEV_VENDOR_PASSWORD))
+                    .emailVerified(true)
+                    .build();
+            userRepository.save(user);
 
-        log.info("Vendor created: {} ({}), campus: {}, invite sent to {}",
-                request.vendorName(), user.getId(), campus.getName(), request.email());
+            vendorBuilder
+                    .user(user)
+                    .businessName(request.vendorName())
+                    .pan("TESTPAN0000")
+                    .bankAccount("0000000000")
+                    .ifsc("SBIN0000000")
+                    .gstRegistered(false);
+
+            log.info("[DEV] Vendor created: {} — login: {} / {}", request.vendorName(), request.email(), DEV_VENDOR_PASSWORD);
+        } else {
+            String setupToken = UUID.randomUUID().toString();
+            user = User.builder()
+                    .name(request.ownerName())
+                    .email(request.email())
+                    .role(UserRole.VENDOR)
+                    .setupToken(setupToken)
+                    .setupTokenExpiresAt(LocalDateTime.now().plusHours(24))
+                    .build();
+            userRepository.save(user);
+
+            vendorBuilder.user(user);
+
+            emailService.sendVendorInvite(request.email(), request.ownerName(), setupToken);
+            log.info("Vendor created: {} ({}), campus: {}, invite sent to {}",
+                    request.vendorName(), user.getId(), campus.getName(), request.email());
+        }
+
+        vendorRepository.save(vendorBuilder.build());
     }
 
     @Transactional(readOnly = true)
