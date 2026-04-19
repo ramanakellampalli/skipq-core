@@ -1,12 +1,14 @@
-name: Deploy to Cloud Run (prod)
+name: Deploy to Cloud Run (dev)
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: asia-south1
-  SERVICE: skipq-core
+  SERVICE: skipq-core-dev
   IMAGE: asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skipq-core/skipq-core
 
 jobs:
@@ -40,14 +42,14 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build -t $IMAGE:$GITHUB_SHA -t $IMAGE:latest .
-          docker push $IMAGE:$GITHUB_SHA
-          docker push $IMAGE:latest
+          docker build -t $IMAGE:dev-$GITHUB_SHA -t $IMAGE:dev-latest .
+          docker push $IMAGE:dev-$GITHUB_SHA
+          docker push $IMAGE:dev-latest
 
-      - name: Deploy to Cloud Run (prod)
+      - name: Deploy to Cloud Run (dev)
         run: |
           gcloud run deploy $SERVICE \
-            --image $IMAGE:$GITHUB_SHA \
+            --image $IMAGE:dev-$GITHUB_SHA \
             --region $REGION \
             --platform managed \
             --allow-unauthenticated \
@@ -56,5 +58,5 @@ jobs:
             --min-instances 0 \
             --max-instances 2 \
             --port 8080 \
-            --set-env-vars "SPRING_PROFILES_ACTIVE=prod" \
-            --set-secrets "JWT_SECRET=JWT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,RESEND_FROM_EMAIL=RESEND_FROM_EMAIL:latest,DEEP_LINK_BASE_URL=DEEP_LINK_BASE_URL:latest,PROD_DB_URL=PROD_DB_URL:latest,PROD_DB_USERNAME=PROD_DB_USERNAME:latest,PROD_DB_PASSWORD=PROD_DB_PASSWORD:latest,ABLY_API_KEY=ABLY_API_KEY:latest,RAZOR_TEST_ID=RAZOR_TEST_ID:latest,RAZOR_TEST_SECRET=RAZOR_TEST_SECRET:latest,RAZOR_WEBHOOK_SECRET=RAZOR_WEBHOOK_SECRET:latest"
+            --set-env-vars "SPRING_PROFILES_ACTIVE=dev" \
+            --set-secrets "JWT_SECRET=JWT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,RESEND_FROM_EMAIL=RESEND_FROM_EMAIL:latest,DEEP_LINK_BASE_URL=DEEP_LINK_BASE_URL:latest,DEV_DB_URL=DEV_DB_URL:latest,DEV_DB_USERNAME=DEV_DB_USERNAME:latest,DEV_DB_PASSWORD=DEV_DB_PASSWORD:latest,ABLY_API_KEY=ABLY_API_KEY:latest,RAZOR_TEST_ID=RAZOR_TEST_ID:latest,RAZOR_TEST_SECRET=RAZOR_TEST_SECRET:latest,RAZOR_WEBHOOK_SECRET=RAZOR_WEBHOOK_SECRET:latest"

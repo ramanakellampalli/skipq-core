@@ -2,6 +2,11 @@ spring:
   application:
     name: skipq-core
 
+  flyway:
+    enabled: true
+    baseline-on-migrate: true   # safe for existing DBs — won't re-run V1/V2 already applied manually
+    baseline-version: 0
+
   jpa:
     hibernate:
       ddl-auto: validate
