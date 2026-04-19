@@ -43,6 +43,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/webhooks/razorpay").permitAll()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())

@@ -17,4 +17,6 @@ public interface VendorRepository extends JpaRepository<Vendor, UUID> {
     Optional<Vendor> findByUserId(UUID userId);
 
     Optional<Vendor> findByUserEmail(String email);
+
+    Optional<Vendor> findByRazorpayLinkedAccountId(String razorpayLinkedAccountId);
 }
