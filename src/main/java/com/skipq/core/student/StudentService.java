@@ -1,5 +1,7 @@
 package com.skipq.core.student;
 
+import com.skipq.core.auth.User;
+import com.skipq.core.auth.UserRepository;
 import com.skipq.core.common.OrderStatus;
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.dto.MenuItemResponse;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -30,13 +33,17 @@ public class StudentService {
     private final OrderRepository orderRepository;
     private final MenuItemRepository menuItemRepository;
     private final VendorService vendorService;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public StudentSyncResponse sync(String email) {
-        // Query 1: all vendors, open first
-        List<VendorResponse> vendors = vendorService.getAllVendors();
+        User student = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
 
-        // Query 2: student's orders with items in one JOIN FETCH
+        List<VendorResponse> vendors = student.getCampus() != null
+                ? vendorService.getVendorsByCampus(student.getCampus())
+                : vendorService.getAllVendors();
+
         List<Order> orders = orderRepository.findAllByUserEmailWithItems(email);
 
         List<OrderResponse> activeOrders = orders.stream()
@@ -49,13 +56,12 @@ public class StudentService {
                 .map(this::toResponse)
                 .toList();
 
-        // Most recent active order, or null
         OrderResponse activeOrder = activeOrders.isEmpty() ? null : activeOrders.get(0);
 
         return new StudentSyncResponse(vendors, activeOrder, pastOrders);
     }
 
-    public List<MenuItemResponse> getAvailableMenu(java.util.UUID vendorId) {
+    public List<MenuItemResponse> getAvailableMenu(UUID vendorId) {
         return menuItemRepository.findAllByVendorIdAndIsAvailableTrue(vendorId)
                 .stream()
                 .map(m -> new MenuItemResponse(m.getId(), m.getName(), m.getPrice(), m.isAvailable()))

@@ -1,10 +1,6 @@
 package com.skipq.core.auth;
 
-import com.skipq.core.auth.dto.AuthResponse;
-import com.skipq.core.auth.dto.LoginRequest;
-import com.skipq.core.auth.dto.RegisterRequest;
-import com.skipq.core.auth.dto.SetupAccountRequest;
-import com.skipq.core.auth.dto.SetupPasswordRequest;
+import com.skipq.core.auth.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,13 +15,21 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
+    public OtpSentResponse register(@Valid @RequestBody RegisterRequest request) {
         return authService.register(request);
     }
 
+    // Students get OTP, vendors/admins get JWT directly
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request);
+    public Object login(@Valid @RequestBody LoginRequest request) {
+        OtpSentResponse otpResponse = authService.login(request);
+        if (otpResponse != null) return otpResponse;
+        return authService.loginWithPassword(request);
+    }
+
+    @PostMapping("/verify-otp")
+    public AuthResponse verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        return authService.verifyOtp(request);
     }
 
     @PostMapping("/setup-account")

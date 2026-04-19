@@ -42,6 +42,10 @@ public class OrderService {
             throw new IllegalStateException("Vendor is currently closed");
         }
 
+        if (user.getCampus() != null && !user.getCampus().getId().equals(vendor.getCampus().getId())) {
+            throw new IllegalArgumentException("This vendor does not serve your campus");
+        }
+
         if (user.getRole() == com.skipq.core.common.UserRole.VENDOR) {
             vendorRepository.findByUserEmail(email).ifPresent(ownVendor -> {
                 if (ownVendor.getId().equals(vendor.getId())) {

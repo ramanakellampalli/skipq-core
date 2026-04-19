@@ -12,6 +12,10 @@ spring:
   jpa:
     show-sql: true
 
+otp:
+  bypass: true
+  fixed-code: "123456"
+
 logging:
   level:
     com.skipq: DEBUG

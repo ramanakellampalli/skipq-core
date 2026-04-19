@@ -17,6 +17,11 @@ spring:
 
 ABLY_API_KEY: test-ably-key
 
+otp:
+  bypass: true
+  fixed-code: "123456"
+  allowed-test-domain: test.skipq.dev
+
 app:
   jwt:
     secret: test-secret-key-that-is-long-enough-for-hs256-algorithm

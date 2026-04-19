@@ -107,6 +107,13 @@ public class VendorService {
                 .toList();
     }
 
+    public List<VendorResponse> getVendorsByCampus(com.skipq.core.campus.Campus campus) {
+        return vendorRepository.findAllByCampusOrderByIsOpenDesc(campus)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     public VendorResponse getById(UUID vendorId) {
         return vendorRepository.findById(vendorId)
                 .map(this::toResponse)
@@ -120,6 +127,7 @@ public class VendorService {
 
     private VendorResponse toResponse(Vendor vendor) {
         return new VendorResponse(vendor.getId(), vendor.getName(), vendor.isOpen(), vendor.getPrepTime(),
-                vendor.getBusinessName(), vendor.isGstRegistered(), vendor.getGstin(), vendor.isKycApproved());
+                vendor.getBusinessName(), vendor.isGstRegistered(), vendor.getGstin(), vendor.isKycApproved(),
+                vendor.getCampus().getId(), vendor.getCampus().getName());
     }
 }

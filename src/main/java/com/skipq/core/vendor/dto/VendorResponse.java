@@ -10,5 +10,7 @@ public record VendorResponse(
         String businessName,
         boolean gstRegistered,
         String gstin,
-        boolean kycApproved
+        boolean kycApproved,
+        UUID campusId,
+        String campusName
 ) {}

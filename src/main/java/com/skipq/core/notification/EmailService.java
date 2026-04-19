@@ -21,6 +21,68 @@ public class EmailService {
         this.from = from;
     }
 
+    public void sendOtp(String toEmail, String name, String code) {
+        String html = """
+                <!DOCTYPE html>
+                <html lang="en">
+                <body style="margin:0;padding:0;background-color:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                  <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0">
+                    <tr>
+                      <td align="center" style="padding:40px 16px;">
+                        <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0"
+                               style="max-width:480px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+                          <tr>
+                            <td style="background:linear-gradient(135deg,#FF6B35 0%%,#FF8C42 100%%);padding:32px 40px;">
+                              <span style="font-size:26px;font-weight:800;color:#FFFFFF;">Skip<span style="color:#FFE4D6;">Q</span></span>
+                              <p style="margin:12px 0 0;font-size:20px;font-weight:700;color:#FFFFFF;">Your login code</p>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding:32px 40px 0;">
+                              <p style="margin:0;font-size:15px;color:#4B5563;line-height:1.7;">Hi %s, use the code below to sign in to SkipQ. It expires in <strong>10 minutes</strong>.</p>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding:24px 40px;">
+                              <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" border="0"
+                                     style="background:#FFF7ED;border:2px solid #FF6B35;border-radius:12px;">
+                                <tr>
+                                  <td align="center" style="padding:20px;">
+                                    <p style="margin:0;font-size:36px;font-weight:800;color:#FF6B35;letter-spacing:8px;font-family:'Courier New',monospace;">%s</p>
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding:0 40px 32px;">
+                              <p style="margin:0;font-size:13px;color:#9CA3AF;">If you didn't request this, you can safely ignore it.</p>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </body>
+                </html>
+                """.formatted(name, code);
+
+        CreateEmailOptions params = CreateEmailOptions.builder()
+                .from(from)
+                .to(toEmail)
+                .subject("Your SkipQ login code: " + code)
+                .html(html)
+                .build();
+
+        try {
+            resend.emails().send(params);
+            log.info("OTP sent to {}", toEmail);
+        } catch (ResendException e) {
+            log.error("Failed to send OTP to {}: {}", toEmail, e.getMessage());
+            throw new RuntimeException("Failed to send OTP email", e);
+        }
+    }
+
     public void sendVendorInvite(String toEmail, String vendorName, String token) {
         String html = """
                 <!DOCTYPE html>
