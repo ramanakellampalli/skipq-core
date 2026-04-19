@@ -15,6 +15,8 @@ spring:
   autoconfigure:
     exclude: []
 
+ABLY_API_KEY: test-ably-key
+
 app:
   jwt:
     secret: test-secret-key-that-is-long-enough-for-hs256-algorithm
