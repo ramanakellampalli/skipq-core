@@ -25,7 +25,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         SELECT
           COUNT(o) AS totalOrders,
           COALESCE(SUM(o.totalAmount), 0) AS revenue,
-          SUM(CASE WHEN o.status IN ('ACCEPTED', 'PREPARING') THEN 1 ELSE 0 END) AS inProgress
+          COALESCE(SUM(CASE WHEN o.status IN ('ACCEPTED', 'PREPARING') THEN 1 ELSE 0 END), 0) AS inProgress
         FROM Order o
         WHERE CAST(o.createdAt AS date) = CURRENT_DATE
         """)
