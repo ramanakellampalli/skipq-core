@@ -47,6 +47,7 @@ public class AuthService {
         User user = User.builder()
                 .name(request.name())
                 .email(request.email())
+                .passwordHash(passwordEncoder.encode(request.password()))
                 .role(UserRole.STUDENT)
                 .campus(campus)
                 .build();
@@ -57,26 +58,18 @@ public class AuthService {
         return new OtpSentResponse("OTP sent to " + request.email());
     }
 
-    @Transactional
-    public OtpSentResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("No account found for this email"));
-
-        if (user.getRole() == UserRole.STUDENT) {
-            otpService.generateAndSend(user);
-            return new OtpSentResponse("OTP sent to " + request.email());
-        }
-
-        // Vendor / admin — password login (returns null, handled by controller branching)
-        return null;
-    }
-
-    public AuthResponse loginWithPassword(LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password())
         );
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (user.getRole() == UserRole.STUDENT && !user.isEmailVerified()) {
+            otpService.generateAndSend(user);
+            throw new IllegalStateException("Email not verified. A new OTP has been sent to " + user.getEmail());
+        }
+
         return toAuthResponse(jwtService.generateToken(user), user);
     }
 

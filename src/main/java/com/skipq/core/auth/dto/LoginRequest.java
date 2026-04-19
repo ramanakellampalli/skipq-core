@@ -5,5 +5,5 @@ import jakarta.validation.constraints.NotBlank;
 
 public record LoginRequest(
         @Email @NotBlank String email,
-        String password  // null for students (OTP flow), required for vendor/admin
+        @NotBlank String password
 ) {}
