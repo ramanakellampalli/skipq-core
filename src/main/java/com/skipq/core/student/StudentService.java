@@ -9,6 +9,7 @@ import com.skipq.core.order.Order;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.order.dto.OrderItemResponse;
 import com.skipq.core.order.dto.OrderResponse;
+import com.skipq.core.student.dto.StudentProfile;
 import com.skipq.core.student.dto.StudentSyncResponse;
 import com.skipq.core.vendor.VendorService;
 import com.skipq.core.vendor.dto.VendorResponse;
@@ -37,11 +38,20 @@ public class StudentService {
 
     @Transactional(readOnly = true)
     public StudentSyncResponse sync(String email) {
-        User student = userRepository.findByEmail(email)
+        User student = userRepository.findByEmailWithCampus(email)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
 
-        List<VendorResponse> vendors = student.getCampus() != null
-                ? vendorService.getVendorsByCampus(student.getCampus())
+        var campus = student.getCampus();
+        StudentProfile profile = new StudentProfile(
+                student.getId(),
+                student.getName(),
+                student.getEmail(),
+                campus != null ? campus.getId() : null,
+                campus != null ? campus.getName() : null
+        );
+
+        List<VendorResponse> vendors = campus != null
+                ? vendorService.getVendorsByCampus(campus)
                 : vendorService.getAllVendors();
 
         List<Order> orders = orderRepository.findAllByUserEmailWithItems(email);
@@ -58,7 +68,7 @@ public class StudentService {
 
         OrderResponse activeOrder = activeOrders.isEmpty() ? null : activeOrders.get(0);
 
-        return new StudentSyncResponse(vendors, activeOrder, pastOrders);
+        return new StudentSyncResponse(profile, vendors, activeOrder, pastOrders);
     }
 
     public List<MenuItemResponse> getAvailableMenu(UUID vendorId) {
