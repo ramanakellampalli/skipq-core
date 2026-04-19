@@ -19,12 +19,9 @@ public class AuthController {
         return authService.register(request);
     }
 
-    // Students get OTP, vendors/admins get JWT directly
     @PostMapping("/login")
-    public Object login(@Valid @RequestBody LoginRequest request) {
-        OtpSentResponse otpResponse = authService.login(request);
-        if (otpResponse != null) return otpResponse;
-        return authService.loginWithPassword(request);
+    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
+        return authService.login(request);
     }
 
     @PostMapping("/verify-otp")
