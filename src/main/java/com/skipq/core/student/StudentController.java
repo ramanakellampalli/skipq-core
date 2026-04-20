@@ -27,7 +27,7 @@ public class StudentController {
 
     @GetMapping("/sync")
     public StudentSyncResponse sync(@AuthenticationPrincipal UserDetails userDetails) {
-        return studentService.sync(userDetails.getUsername());
+        return studentService.sync(userId(userDetails));
     }
 
     @GetMapping("/menu/{vendorId}")
@@ -38,12 +38,16 @@ public class StudentController {
     @PostMapping("/orders")
     public OrderResponse placeOrder(@AuthenticationPrincipal UserDetails userDetails,
                                     @Valid @RequestBody PlaceOrderRequest request) {
-        return orderService.placeOrder(userDetails.getUsername(), request);
+        return orderService.placeOrder(userId(userDetails), request);
     }
 
     @DeleteMapping("/account")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
-        studentService.deleteAccount(userDetails.getUsername());
+        studentService.deleteAccount(userId(userDetails));
+    }
+
+    private UUID userId(UserDetails userDetails) {
+        return UUID.fromString(userDetails.getUsername());
     }
 }

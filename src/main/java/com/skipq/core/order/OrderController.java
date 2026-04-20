@@ -24,37 +24,41 @@ public class OrderController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
     public OrderResponse placeOrder(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody PlaceOrderRequest request) {
-        return orderService.placeOrder(user.getUsername(), request);
+        return orderService.placeOrder(userId(userDetails), request);
     }
 
     @GetMapping("/api/v1/orders")
     @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
-    public List<OrderResponse> getMyOrders(@AuthenticationPrincipal UserDetails user) {
-        return orderService.getMyOrders(user.getUsername());
+    public List<OrderResponse> getMyOrders(@AuthenticationPrincipal UserDetails userDetails) {
+        return orderService.getMyOrders(userId(userDetails));
     }
 
     @GetMapping("/api/v1/orders/{orderId}")
     @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
     public OrderResponse getOrder(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable UUID orderId) {
-        return orderService.getOrder(user.getUsername(), orderId);
+        return orderService.getOrder(userId(userDetails), orderId);
     }
 
     @GetMapping("/api/v1/vendor/orders")
     @PreAuthorize("hasRole('VENDOR')")
-    public List<OrderResponse> getVendorOrders(@AuthenticationPrincipal UserDetails user) {
-        return orderService.getVendorOrders(user.getUsername());
+    public List<OrderResponse> getVendorOrders(@AuthenticationPrincipal UserDetails userDetails) {
+        return orderService.getVendorOrders(userId(userDetails));
     }
 
     @PatchMapping("/api/v1/vendor/orders/{orderId}/status")
     @PreAuthorize("hasRole('VENDOR')")
     public OrderResponse updateStatus(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable UUID orderId,
             @Valid @RequestBody UpdateOrderStatusRequest request) {
-        return orderService.updateStatus(user.getUsername(), orderId, request.status());
+        return orderService.updateStatus(userId(userDetails), orderId, request.status());
+    }
+
+    private UUID userId(UserDetails userDetails) {
+        return UUID.fromString(userDetails.getUsername());
     }
 }

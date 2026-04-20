@@ -31,8 +31,8 @@ public class OrderService {
     private final AblyService ablyService;
 
     @Transactional
-    public OrderResponse placeOrder(String email, PlaceOrderRequest request) {
-        User user = userRepository.findByEmail(email)
+    public OrderResponse placeOrder(UUID userId, PlaceOrderRequest request) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         Vendor vendor = vendorRepository.findById(request.vendorId())
@@ -46,13 +46,11 @@ public class OrderService {
             throw new IllegalArgumentException("This vendor does not serve your campus");
         }
 
-        if (user.getRole() == com.skipq.core.common.UserRole.VENDOR) {
-            vendorRepository.findByUserEmail(email).ifPresent(ownVendor -> {
-                if (ownVendor.getId().equals(vendor.getId())) {
-                    throw new IllegalArgumentException("You cannot place an order at your own store");
-                }
-            });
-        }
+        vendorRepository.findByUserId(userId).ifPresent(ownVendor -> {
+            if (ownVendor.getId().equals(vendor.getId())) {
+                throw new IllegalArgumentException("You cannot place an order at your own store");
+            }
+        });
 
         List<OrderItem> orderItems = request.items().stream().map(itemReq -> {
             MenuItem menuItem = menuItemRepository.findById(itemReq.menuItemId())
@@ -83,7 +81,7 @@ public class OrderService {
 
         BigDecimal cgst = vendor.isGstRegistered() ? subtotal.multiply(rate025).setScale(2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO;
         BigDecimal sgst = vendor.isGstRegistered() ? subtotal.multiply(rate025).setScale(2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO;
-        BigDecimal igst = BigDecimal.ZERO; // inter-state not implemented yet
+        BigDecimal igst = BigDecimal.ZERO;
         BigDecimal taxAmount = cgst.add(sgst).add(igst);
 
         BigDecimal platformFee        = subtotal.multiply(rate03).setScale(2, java.math.RoundingMode.HALF_UP);
@@ -120,11 +118,11 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public OrderResponse getOrder(String email, UUID orderId) {
+    public OrderResponse getOrder(UUID userId, UUID orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
 
-        if (!order.getUser().getEmail().equals(email)) {
+        if (!order.getUser().getId().equals(userId)) {
             throw new IllegalArgumentException("Order not found");
         }
 
@@ -133,18 +131,15 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponse> getMyOrders(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        return orderRepository.findAllByUserId(user.getId()).stream()
+    public List<OrderResponse> getMyOrders(UUID userId) {
+        return orderRepository.findAllByUserId(userId).stream()
                 .map(order -> toResponse(order, orderItemRepository.findAllByOrderId(order.getId())))
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<OrderResponse> getVendorOrders(String email) {
-        Vendor vendor = vendorRepository.findByUserEmail(email)
+    public List<OrderResponse> getVendorOrders(UUID userId) {
+        Vendor vendor = vendorRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
 
         return orderRepository.findAllByVendorId(vendor.getId()).stream()
@@ -153,8 +148,8 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderResponse updateStatus(String email, UUID orderId, OrderStatus newStatus) {
-        Vendor vendor = vendorRepository.findByUserEmail(email)
+    public OrderResponse updateStatus(UUID userId, UUID orderId, OrderStatus newStatus) {
+        Vendor vendor = vendorRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
 
         Order order = orderRepository.findById(orderId)
@@ -187,48 +182,13 @@ public class OrderService {
                 ))
                 .toList();
 
-        var vendor = new OrderResponse.VendorInfo(
-                order.getVendor().getId(),
-                order.getVendor().getName()
-        );
+        var vendor  = new OrderResponse.VendorInfo(order.getVendor().getId(), order.getVendor().getName());
+        var state   = new OrderResponse.OrderState(order.getStatus(), order.getPaymentStatus());
+        var tax     = new OrderResponse.TaxBreakdown(order.getCgst(), order.getSgst(), order.getIgst(), order.getTaxAmount());
+        var fees    = new OrderResponse.Fees(order.getPlatformFee(), order.getPaymentTerminalFee(), order.getTotalServiceFee());
+        var pricing = new OrderResponse.Pricing(order.getSubtotal(), tax, fees, order.getTotalAmount());
+        var timeline = new OrderResponse.Timeline(order.getCreatedAt(), order.getEstimatedReadyAt());
 
-        var state = new OrderResponse.OrderState(
-                order.getStatus(),
-                order.getPaymentStatus()
-        );
-
-        var tax = new OrderResponse.TaxBreakdown(
-                order.getCgst(),
-                order.getSgst(),
-                order.getIgst(),
-                order.getTaxAmount()
-        );
-
-        var fees = new OrderResponse.Fees(
-                order.getPlatformFee(),
-                order.getPaymentTerminalFee(),
-                order.getTotalServiceFee()
-        );
-
-        var pricing = new OrderResponse.Pricing(
-                order.getSubtotal(),
-                tax,
-                fees,
-                order.getTotalAmount()
-        );
-
-        var timeline = new OrderResponse.Timeline(
-                order.getCreatedAt(),
-                order.getEstimatedReadyAt()
-        );
-
-        return new OrderResponse(
-                order.getId(),
-                vendor,
-                state,
-                pricing,
-                timeline,
-                itemResponses
-        );
+        return new OrderResponse(order.getId(), vendor, state, pricing, timeline, itemResponses);
     }
 }

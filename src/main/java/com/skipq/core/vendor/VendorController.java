@@ -20,28 +20,25 @@ public class VendorController {
 
     private final VendorService vendorService;
 
-    // Vendor app — single call to load everything on login
     @GetMapping("/api/v1/vendor/sync")
     @PreAuthorize("hasRole('VENDOR')")
     public VendorDashboardResponse sync(@AuthenticationPrincipal UserDetails userDetails) {
-        return vendorService.sync(userDetails.getUsername());
+        return vendorService.sync(userId(userDetails));
     }
 
-    // Vendor app — profile management
     @GetMapping("/api/v1/vendor/profile")
     @PreAuthorize("hasRole('VENDOR')")
     public VendorResponse getProfile(@AuthenticationPrincipal UserDetails userDetails) {
-        return vendorService.getProfile(userDetails.getUsername());
+        return vendorService.getProfile(userId(userDetails));
     }
 
     @PatchMapping("/api/v1/vendor/profile")
     @PreAuthorize("hasRole('VENDOR')")
     public VendorResponse updateProfile(@AuthenticationPrincipal UserDetails userDetails,
                                         @Valid @RequestBody UpdateVendorRequest request) {
-        return vendorService.updateProfile(userDetails.getUsername(), request);
+        return vendorService.updateProfile(userId(userDetails), request);
     }
 
-    // Student app — browse vendors
     @GetMapping("/api/v1/vendors")
     @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
     public List<VendorResponse> getOpenVendors() {
@@ -58,6 +55,10 @@ public class VendorController {
     @PreAuthorize("hasRole('VENDOR')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
-        vendorService.deleteAccount(userDetails.getUsername());
+        vendorService.deleteAccount(userId(userDetails));
+    }
+
+    private UUID userId(UserDetails userDetails) {
+        return UUID.fromString(userDetails.getUsername());
     }
 }

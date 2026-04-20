@@ -39,8 +39,8 @@ public class StudentService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public StudentSyncResponse sync(String email) {
-        User student = userRepository.findByEmailWithCampus(email)
+    public StudentSyncResponse sync(UUID userId) {
+        User student = userRepository.findByIdWithCampus(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
 
         var campus = student.getCampus();
@@ -56,7 +56,7 @@ public class StudentService {
                 ? vendorService.getVendorsByCampus(campus)
                 : vendorService.getAllVendors();
 
-        List<Order> orders = orderRepository.findAllByUserEmailWithItems(email);
+        List<Order> orders = orderRepository.findAllByUserIdWithItems(userId);
 
         List<OrderResponse> activeOrders = orders.stream()
                 .filter(o -> ACTIVE_STATUSES.contains(o.getStatus()))
@@ -81,13 +81,11 @@ public class StudentService {
     }
 
     @Transactional
-    public void deleteAccount(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
-        List<Order> orders = orderRepository.findAllByUserId(user.getId());
+    public void deleteAccount(UUID userId) {
+        List<Order> orders = orderRepository.findAllByUserId(userId);
         orderItemRepository.deleteAllByOrderIn(orders);
         orderRepository.deleteAll(orders);
-        userRepository.delete(user);
+        userRepository.deleteById(userId);
     }
 
     private OrderResponse toResponse(Order order) {
