@@ -7,6 +7,7 @@ import com.skipq.core.order.dto.PlaceOrderRequest;
 import com.skipq.core.student.dto.StudentSyncResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -38,5 +39,11 @@ public class StudentController {
     public OrderResponse placeOrder(@AuthenticationPrincipal UserDetails userDetails,
                                     @Valid @RequestBody PlaceOrderRequest request) {
         return orderService.placeOrder(userDetails.getUsername(), request);
+    }
+
+    @DeleteMapping("/account")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
+        studentService.deleteAccount(userDetails.getUsername());
     }
 }

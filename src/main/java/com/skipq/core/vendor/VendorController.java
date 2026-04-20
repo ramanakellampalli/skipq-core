@@ -5,6 +5,7 @@ import com.skipq.core.vendor.dto.VendorDashboardResponse;
 import com.skipq.core.vendor.dto.VendorResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -51,5 +52,12 @@ public class VendorController {
     @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
     public VendorResponse getVendor(@PathVariable UUID vendorId) {
         return vendorService.getById(vendorId);
+    }
+
+    @DeleteMapping("/api/v1/vendor/account")
+    @PreAuthorize("hasRole('VENDOR')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
+        vendorService.deleteAccount(userDetails.getUsername());
     }
 }

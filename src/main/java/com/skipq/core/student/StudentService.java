@@ -6,6 +6,7 @@ import com.skipq.core.common.OrderStatus;
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.dto.MenuItemResponse;
 import com.skipq.core.order.Order;
+import com.skipq.core.order.OrderItemRepository;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.order.dto.OrderItemResponse;
 import com.skipq.core.order.dto.OrderResponse;
@@ -32,6 +33,7 @@ public class StudentService {
     );
 
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final MenuItemRepository menuItemRepository;
     private final VendorService vendorService;
     private final UserRepository userRepository;
@@ -76,6 +78,16 @@ public class StudentService {
                 .stream()
                 .map(m -> new MenuItemResponse(m.getId(), m.getName(), m.getPrice(), m.isAvailable()))
                 .toList();
+    }
+
+    @Transactional
+    public void deleteAccount(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        List<Order> orders = orderRepository.findAllByUserId(user.getId());
+        orderItemRepository.deleteAllByOrderIn(orders);
+        orderRepository.deleteAll(orders);
+        userRepository.delete(user);
     }
 
     private OrderResponse toResponse(Order order) {
