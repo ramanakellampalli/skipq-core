@@ -28,14 +28,13 @@ public class VendorService {
     private final MenuItemRepository menuItemRepository;
     private final UserRepository userRepository;
 
-    public VendorResponse getProfile(String email) {
-        Vendor vendor = findByEmail(email);
-        return toResponse(vendor);
+    public VendorResponse getProfile(UUID userId) {
+        return toResponse(findByUserId(userId));
     }
 
     @Transactional
-    public VendorResponse updateProfile(String email, UpdateVendorRequest request) {
-        Vendor vendor = findByEmail(email);
+    public VendorResponse updateProfile(UUID userId, UpdateVendorRequest request) {
+        Vendor vendor = findByUserId(userId);
 
         if (request.isOpen() != null) {
             vendor.setOpen(request.isOpen());
@@ -48,12 +47,11 @@ public class VendorService {
     }
 
     @Transactional(readOnly = true)
-    public VendorDashboardResponse sync(String email) {
-        // Query 1: vendor + orders + order_items + menu_item in one JOIN
-        List<Order> orders = orderRepository.findAllByVendorEmailWithItems(email);
+    public VendorDashboardResponse sync(UUID userId) {
+        List<Order> orders = orderRepository.findAllByVendorUserIdWithItems(userId);
 
         Vendor vendor = orders.isEmpty()
-                ? findByEmail(email)
+                ? findByUserId(userId)
                 : orders.get(0).getVendor();
 
         List<OrderResponse> allOrders = orders.stream()
@@ -88,7 +86,6 @@ public class VendorService {
                           || o.state().orderStatus() == com.skipq.core.common.OrderStatus.REJECTED)
                 .toList();
 
-        // Query 2: menu items (independent dataset — cannot join without Cartesian product)
         List<MenuItemResponse> menuItems = menuItemRepository.findAllByVendorId(vendor.getId())
                 .stream()
                 .map(m -> new MenuItemResponse(m.getId(), m.getName(), m.getPrice(), m.isAvailable()))
@@ -125,19 +122,19 @@ public class VendorService {
     }
 
     @Transactional
-    public void deleteAccount(String email) {
-        Vendor vendor = findByEmail(email);
+    public void deleteAccount(UUID userId) {
+        Vendor vendor = findByUserId(userId);
         List<Order> orders = orderRepository.findAllByVendorId(vendor.getId());
         orderItemRepository.deleteAllByOrderIn(orders);
         orderRepository.deleteAll(orders);
         menuItemRepository.deleteAllByVendorId(vendor.getId());
         vendorRepository.delete(vendor);
-        userRepository.delete(vendor.getUser());
+        userRepository.deleteById(userId);
     }
 
-    private Vendor findByEmail(String email) {
-        return vendorRepository.findByUserEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Vendor not found for user"));
+    private Vendor findByUserId(UUID userId) {
+        return vendorRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
     }
 
     private VendorResponse toResponse(Vendor vendor) {

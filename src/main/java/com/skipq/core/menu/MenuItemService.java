@@ -19,8 +19,8 @@ public class MenuItemService {
     private final MenuItemRepository menuItemRepository;
     private final VendorRepository vendorRepository;
 
-    public List<MenuItemResponse> getVendorMenu(String email) {
-        Vendor vendor = findVendorByEmail(email);
+    public List<MenuItemResponse> getVendorMenu(UUID userId) {
+        Vendor vendor = findVendorByUserId(userId);
         return menuItemRepository.findAllByVendorId(vendor.getId())
                 .stream().map(this::toResponse).toList();
     }
@@ -31,8 +31,8 @@ public class MenuItemService {
     }
 
     @Transactional
-    public MenuItemResponse create(String email, CreateMenuItemRequest request) {
-        Vendor vendor = findVendorByEmail(email);
+    public MenuItemResponse create(UUID userId, CreateMenuItemRequest request) {
+        Vendor vendor = findVendorByUserId(userId);
         MenuItem item = MenuItem.builder()
                 .vendor(vendor)
                 .name(request.name())
@@ -43,21 +43,21 @@ public class MenuItemService {
     }
 
     @Transactional
-    public MenuItemResponse update(String email, UUID itemId, UpdateMenuItemRequest request) {
-        MenuItem item = findOwnedItem(email, itemId);
+    public MenuItemResponse update(UUID userId, UUID itemId, UpdateMenuItemRequest request) {
+        MenuItem item = findOwnedItem(userId, itemId);
         if (request.price() != null) item.setPrice(request.price());
         if (request.isAvailable() != null) item.setAvailable(request.isAvailable());
         return toResponse(menuItemRepository.save(item));
     }
 
     @Transactional
-    public void delete(String email, UUID itemId) {
-        MenuItem item = findOwnedItem(email, itemId);
+    public void delete(UUID userId, UUID itemId) {
+        MenuItem item = findOwnedItem(userId, itemId);
         menuItemRepository.delete(item);
     }
 
-    private MenuItem findOwnedItem(String email, UUID itemId) {
-        Vendor vendor = findVendorByEmail(email);
+    private MenuItem findOwnedItem(UUID userId, UUID itemId) {
+        Vendor vendor = findVendorByUserId(userId);
         MenuItem item = menuItemRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("Menu item not found"));
         if (!item.getVendor().getId().equals(vendor.getId())) {
@@ -66,9 +66,9 @@ public class MenuItemService {
         return item;
     }
 
-    private Vendor findVendorByEmail(String email) {
-        return vendorRepository.findByUserEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Vendor not found for user"));
+    private Vendor findVendorByUserId(UUID userId) {
+        return vendorRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
     }
 
     private MenuItemResponse toResponse(MenuItem item) {

@@ -20,11 +20,10 @@ public class MenuItemController {
 
     private final MenuItemService menuItemService;
 
-    // Vendor app — menu management
     @GetMapping("/api/v1/vendor/menu")
     @PreAuthorize("hasRole('VENDOR')")
     public List<MenuItemResponse> getVendorMenu(@AuthenticationPrincipal UserDetails userDetails) {
-        return menuItemService.getVendorMenu(userDetails.getUsername());
+        return menuItemService.getVendorMenu(userId(userDetails));
     }
 
     @PostMapping("/api/v1/vendor/menu")
@@ -32,7 +31,7 @@ public class MenuItemController {
     @ResponseStatus(HttpStatus.CREATED)
     public MenuItemResponse createItem(@AuthenticationPrincipal UserDetails userDetails,
                                        @Valid @RequestBody CreateMenuItemRequest request) {
-        return menuItemService.create(userDetails.getUsername(), request);
+        return menuItemService.create(userId(userDetails), request);
     }
 
     @PatchMapping("/api/v1/vendor/menu/{itemId}")
@@ -40,7 +39,7 @@ public class MenuItemController {
     public MenuItemResponse updateItem(@AuthenticationPrincipal UserDetails userDetails,
                                        @PathVariable UUID itemId,
                                        @Valid @RequestBody UpdateMenuItemRequest request) {
-        return menuItemService.update(userDetails.getUsername(), itemId, request);
+        return menuItemService.update(userId(userDetails), itemId, request);
     }
 
     @DeleteMapping("/api/v1/vendor/menu/{itemId}")
@@ -48,13 +47,16 @@ public class MenuItemController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteItem(@AuthenticationPrincipal UserDetails userDetails,
                            @PathVariable UUID itemId) {
-        menuItemService.delete(userDetails.getUsername(), itemId);
+        menuItemService.delete(userId(userDetails), itemId);
     }
 
-    // Student app — browse available menu
     @GetMapping("/api/v1/vendors/{vendorId}/menu")
     @PreAuthorize("hasRole('STUDENT')")
     public List<MenuItemResponse> getAvailableMenu(@PathVariable UUID vendorId) {
         return menuItemService.getAvailableMenu(vendorId);
+    }
+
+    private UUID userId(UserDetails userDetails) {
+        return UUID.fromString(userDetails.getUsername());
     }
 }

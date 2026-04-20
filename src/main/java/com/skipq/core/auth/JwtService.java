@@ -24,21 +24,20 @@ public class JwtService {
 
     public String generateToken(User user) {
         return Jwts.builder()
-                .subject(user.getEmail())
+                .subject(user.getId().toString())
                 .claim("role", user.getRole().name())
-                .claim("userId", user.getId().toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(secretKey)
                 .compact();
     }
 
-    public String extractEmail(String token) {
+    public String extractUserId(String token) {
         return parseClaims(token).getSubject();
     }
 
-    public boolean isTokenValid(String token, String email) {
-        return extractEmail(token).equals(email) && !isTokenExpired(token);
+    public boolean isTokenValid(String token, String userId) {
+        return extractUserId(token).equals(userId) && !isTokenExpired(token);
     }
 
     private boolean isTokenExpired(String token) {
