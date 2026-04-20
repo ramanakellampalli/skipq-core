@@ -1,8 +1,10 @@
 package com.skipq.core.vendor;
 
+import com.skipq.core.auth.UserRepository;
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.dto.MenuItemResponse;
 import com.skipq.core.order.Order;
+import com.skipq.core.order.OrderItemRepository;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.order.dto.OrderItemResponse;
 import com.skipq.core.order.dto.OrderResponse;
@@ -22,7 +24,9 @@ public class VendorService {
 
     private final VendorRepository vendorRepository;
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final MenuItemRepository menuItemRepository;
+    private final UserRepository userRepository;
 
     public VendorResponse getProfile(String email) {
         Vendor vendor = findByEmail(email);
@@ -118,6 +122,17 @@ public class VendorService {
         return vendorRepository.findById(vendorId)
                 .map(this::toResponse)
                 .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
+    }
+
+    @Transactional
+    public void deleteAccount(String email) {
+        Vendor vendor = findByEmail(email);
+        List<Order> orders = orderRepository.findAllByVendorId(vendor.getId());
+        orderItemRepository.deleteAllByOrderIn(orders);
+        orderRepository.deleteAll(orders);
+        menuItemRepository.deleteAllByVendorId(vendor.getId());
+        vendorRepository.delete(vendor);
+        userRepository.delete(vendor.getUser());
     }
 
     private Vendor findByEmail(String email) {

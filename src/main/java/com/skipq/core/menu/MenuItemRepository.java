@@ -10,4 +10,6 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, UUID> {
     List<MenuItem> findAllByVendorId(UUID vendorId);
 
     List<MenuItem> findAllByVendorIdAndIsAvailableTrue(UUID vendorId);
+
+    void deleteAllByVendorId(UUID vendorId);
 }
