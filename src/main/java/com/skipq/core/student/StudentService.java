@@ -4,7 +4,7 @@ import com.skipq.core.auth.User;
 import com.skipq.core.auth.UserRepository;
 import com.skipq.core.common.OrderStatus;
 import com.skipq.core.menu.MenuItemService;
-import com.skipq.core.menu.dto.MenuItemResponse;
+import com.skipq.core.student.dto.StudentMenuResponse;
 import com.skipq.core.order.Order;
 import com.skipq.core.order.OrderItemRepository;
 import com.skipq.core.order.OrderRepository;
@@ -73,8 +73,8 @@ public class StudentService {
         return new StudentSyncResponse(profile, vendors, activeOrder, pastOrders);
     }
 
-    public List<MenuItemResponse> getAvailableMenu(UUID vendorId) {
-        return menuItemService.getAvailableMenu(vendorId);
+    public StudentMenuResponse getAvailableMenu(UUID vendorId) {
+        return menuItemService.getAvailableMenuStructured(vendorId);
     }
 
     @Transactional

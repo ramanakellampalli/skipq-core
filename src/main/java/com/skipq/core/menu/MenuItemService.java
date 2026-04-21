@@ -1,13 +1,17 @@
 package com.skipq.core.menu;
 
 import com.skipq.core.menu.dto.*;
+import com.skipq.core.student.dto.StudentMenuResponse;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -68,6 +72,30 @@ public class MenuItemService {
     public List<MenuItemResponse> getAvailableMenu(UUID vendorId) {
         return menuItemRepository.findAvailableByVendorIdWithVariants(vendorId)
                 .stream().map(this::toItemResponse).toList();
+    }
+
+    public StudentMenuResponse getAvailableMenuStructured(UUID vendorId) {
+        List<MenuCategory> categories = categoryRepository.findAllByVendorIdOrdered(vendorId);
+        List<MenuItemResponse> allItems = menuItemRepository.findAvailableByVendorIdWithVariants(vendorId)
+                .stream().map(this::toItemResponse).toList();
+
+        Map<UUID, List<MenuItemResponse>> byCategory = new LinkedHashMap<>();
+        for (MenuCategory c : categories) byCategory.put(c.getId(), new ArrayList<>());
+
+        List<MenuItemResponse> uncategorized = new ArrayList<>();
+        for (MenuItemResponse item : allItems) {
+            if (item.categoryId() != null && byCategory.containsKey(item.categoryId())) {
+                byCategory.get(item.categoryId()).add(item);
+            } else {
+                uncategorized.add(item);
+            }
+        }
+
+        List<MenuCategoryResponse> categoryResponses = categories.stream()
+                .map(c -> new MenuCategoryResponse(c.getId(), c.getName(), c.getDisplayOrder(), byCategory.get(c.getId())))
+                .toList();
+
+        return new StudentMenuResponse(categoryResponses, uncategorized);
     }
 
     @Transactional
