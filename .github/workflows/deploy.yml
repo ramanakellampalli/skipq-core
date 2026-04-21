@@ -28,11 +28,11 @@ jobs:
         run: mvn package -DskipTests -q
 
       - name: Run database migrations
-        run: |
-          mvn flyway:migrate \
-            -Dflyway.url=${{ secrets.PROD_MIGRATE_DB_URL }} \
-            -Dflyway.user=${{ secrets.PROD_MIGRATE_DB_USERNAME }} \
-            -Dflyway.password=${{ secrets.PROD_MIGRATE_DB_PASSWORD }}
+        env:
+          FLYWAY_URL: ${{ secrets.PROD_MIGRATE_DB_URL }}
+          FLYWAY_USER: ${{ secrets.PROD_MIGRATE_DB_USERNAME }}
+          FLYWAY_PASSWORD: ${{ secrets.PROD_MIGRATE_DB_PASSWORD }}
+        run: mvn flyway:migrate
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
