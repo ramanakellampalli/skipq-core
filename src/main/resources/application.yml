@@ -3,9 +3,7 @@ spring:
     name: skipq-core
 
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 2
+    enabled: false
 
   jpa:
     hibernate:
