@@ -1,6 +1,6 @@
 package com.skipq.core.student;
 
-import com.skipq.core.menu.dto.MenuItemResponse;
+import com.skipq.core.student.dto.StudentMenuResponse;
 import com.skipq.core.order.OrderService;
 import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.order.dto.PlaceOrderRequest;
@@ -13,7 +13,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -31,7 +30,7 @@ public class StudentController {
     }
 
     @GetMapping("/menu/{vendorId}")
-    public List<MenuItemResponse> getMenu(@PathVariable UUID vendorId) {
+    public StudentMenuResponse getMenu(@PathVariable UUID vendorId) {
         return studentService.getAvailableMenu(vendorId);
     }
 
