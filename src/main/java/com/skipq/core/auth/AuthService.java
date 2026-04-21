@@ -59,11 +59,12 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password())
-        );
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(user.getId().toString(), request.password())
+        );
 
         if (user.getRole() == UserRole.STUDENT && !user.isEmailVerified()) {
             otpService.generateAndSend(user);
