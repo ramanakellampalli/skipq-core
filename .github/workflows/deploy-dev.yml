@@ -29,6 +29,13 @@ jobs:
       - name: Build JAR
         run: mvn package -DskipTests -q
 
+      - name: Run database migrations
+        run: |
+          mvn flyway:migrate \
+            -Dflyway.url=${{ secrets.DEV_MIGRATE_DB_URL }} \
+            -Dflyway.user=${{ secrets.DEV_MIGRATE_DB_USERNAME }} \
+            -Dflyway.password=${{ secrets.DEV_MIGRATE_DB_PASSWORD }}
+
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
