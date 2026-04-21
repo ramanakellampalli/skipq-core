@@ -3,7 +3,7 @@ package com.skipq.core.student;
 import com.skipq.core.auth.User;
 import com.skipq.core.auth.UserRepository;
 import com.skipq.core.common.OrderStatus;
-import com.skipq.core.menu.MenuItemRepository;
+import com.skipq.core.menu.MenuItemService;
 import com.skipq.core.menu.dto.MenuItemResponse;
 import com.skipq.core.order.Order;
 import com.skipq.core.order.OrderItemRepository;
@@ -34,7 +34,7 @@ public class StudentService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final MenuItemRepository menuItemRepository;
+    private final MenuItemService menuItemService;
     private final VendorService vendorService;
     private final UserRepository userRepository;
 
@@ -74,10 +74,7 @@ public class StudentService {
     }
 
     public List<MenuItemResponse> getAvailableMenu(UUID vendorId) {
-        return menuItemRepository.findAllByVendorIdAndIsAvailableTrue(vendorId)
-                .stream()
-                .map(m -> new MenuItemResponse(m.getId(), m.getName(), m.getPrice(), m.isAvailable()))
-                .toList();
+        return menuItemService.getAvailableMenu(vendorId);
     }
 
     @Transactional
@@ -92,7 +89,9 @@ public class StudentService {
         List<OrderItemResponse> items = order.getItems().stream()
                 .map(i -> new OrderItemResponse(
                         i.getMenuItem().getId(),
+                        i.getVariant() != null ? i.getVariant().getId() : null,
                         i.getMenuItem().getName(),
+                        i.getVariantLabel(),
                         i.getQuantity(),
                         i.getUnitPrice(),
                         i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity()))

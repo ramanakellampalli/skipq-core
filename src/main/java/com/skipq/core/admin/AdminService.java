@@ -127,7 +127,9 @@ public class AdminService {
                     List<OrderItemResponse> items = o.getItems().stream()
                             .map(i -> new OrderItemResponse(
                                     i.getMenuItem().getId(),
+                                    i.getVariant() != null ? i.getVariant().getId() : null,
                                     i.getMenuItem().getName(),
+                                    i.getVariantLabel(),
                                     i.getQuantity(),
                                     i.getUnitPrice(),
                                     i.getUnitPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantity()))

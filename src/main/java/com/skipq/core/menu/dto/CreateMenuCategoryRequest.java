@@ -2,12 +2,7 @@ package com.skipq.core.menu.dto;
 
 import jakarta.validation.constraints.NotBlank;
 
-import java.util.UUID;
-
-public record CreateMenuItemRequest(
+public record CreateMenuCategoryRequest(
         @NotBlank String name,
-        String description,
-        boolean isVeg,
-        UUID categoryId,
         int displayOrder
 ) {}

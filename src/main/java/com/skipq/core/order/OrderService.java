@@ -6,6 +6,8 @@ import com.skipq.core.common.OrderStatus;
 import com.skipq.core.common.PaymentStatus;
 import com.skipq.core.menu.MenuItem;
 import com.skipq.core.menu.MenuItemRepository;
+import com.skipq.core.menu.MenuVariant;
+import com.skipq.core.menu.MenuVariantRepository;
 import com.skipq.core.config.AblyService;
 import com.skipq.core.order.dto.*;
 import com.skipq.core.vendor.Vendor;
@@ -28,6 +30,7 @@ public class OrderService {
     private final UserRepository userRepository;
     private final VendorRepository vendorRepository;
     private final MenuItemRepository menuItemRepository;
+    private final MenuVariantRepository menuVariantRepository;
     private final AblyService ablyService;
 
     @Transactional
@@ -53,21 +56,25 @@ public class OrderService {
         });
 
         List<OrderItem> orderItems = request.items().stream().map(itemReq -> {
-            MenuItem menuItem = menuItemRepository.findById(itemReq.menuItemId())
-                    .orElseThrow(() -> new IllegalArgumentException("Menu item not found: " + itemReq.menuItemId()));
+            MenuVariant variant = menuVariantRepository.findById(itemReq.variantId())
+                    .orElseThrow(() -> new IllegalArgumentException("Variant not found: " + itemReq.variantId()));
 
-            if (!menuItem.isAvailable()) {
-                throw new IllegalStateException("Menu item is not available: " + menuItem.getName());
-            }
+            MenuItem menuItem = variant.getMenuItem();
 
             if (!menuItem.getVendor().getId().equals(vendor.getId())) {
                 throw new IllegalArgumentException("Menu item does not belong to this vendor");
             }
 
+            if (!menuItem.isAvailable() || !variant.isAvailable()) {
+                throw new IllegalStateException("Item is not available: " + menuItem.getName());
+            }
+
             return OrderItem.builder()
                     .menuItem(menuItem)
+                    .variant(variant)
+                    .variantLabel(variant.getLabel())
                     .quantity(itemReq.quantity())
-                    .unitPrice(menuItem.getPrice())
+                    .unitPrice(variant.getPrice())
                     .build();
         }).toList();
 
@@ -175,7 +182,9 @@ public class OrderService {
         List<OrderItemResponse> itemResponses = items.stream()
                 .map(i -> new OrderItemResponse(
                         i.getMenuItem().getId(),
+                        i.getVariant() != null ? i.getVariant().getId() : null,
                         i.getMenuItem().getName(),
+                        i.getVariantLabel(),
                         i.getQuantity(),
                         i.getUnitPrice(),
                         i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity()))
