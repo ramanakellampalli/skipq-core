@@ -59,19 +59,35 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        log.debug("Login attempt for email: {}", request.email());
+        
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> {
+                    log.debug("Login failed - user not found for email: {}", request.email());
+                    throw new IllegalArgumentException("User not found");
+                });
 
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(user.getId().toString(), request.password())
-        );
+        log.debug("Found user: {} with role: {}", user.getId(), user.getRole());
+        
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(user.getId().toString(), request.password())
+            );
+            log.debug("Authentication successful for user: {}", user.getId());
+        } catch (Exception e) {
+            log.debug("Authentication failed for user: {} - {}", user.getId(), e.getMessage());
+            throw e;
+        }
 
         if (user.getRole() == UserRole.STUDENT && !user.isEmailVerified()) {
+            log.debug("Student email not verified, sending OTP for user: {}", user.getId());
             otpService.generateAndSend(user);
             throw new IllegalStateException("Email not verified. A new OTP has been sent to " + user.getEmail());
         }
 
-        return toAuthResponse(jwtService.generateToken(user), user);
+        AuthResponse response = toAuthResponse(jwtService.generateToken(user), user);
+        log.debug("Login successful for user: {} with role: {}", user.getId(), user.getRole());
+        return response;
     }
 
     @Transactional
