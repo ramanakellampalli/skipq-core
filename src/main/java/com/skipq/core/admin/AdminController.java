@@ -4,6 +4,7 @@ import com.skipq.core.admin.dto.AdminSyncResponse;
 import com.skipq.core.admin.dto.CreateCampusRequest;
 import com.skipq.core.admin.dto.CreateVendorRequest;
 import com.skipq.core.campus.dto.CampusResponse;
+import com.skipq.core.config.R2ImageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     private final AdminService adminService;
+    private final R2ImageService r2ImageService;
 
     @GetMapping("/sync")
     public AdminSyncResponse sync() {
@@ -33,5 +35,11 @@ public class AdminController {
     @ResponseStatus(HttpStatus.CREATED)
     public void createVendor(@Valid @RequestBody CreateVendorRequest request) {
         adminService.createVendor(request);
+    }
+
+    @PostMapping("/r2/refresh-cache")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void refreshR2Cache() {
+        r2ImageService.refreshCache();
     }
 }
