@@ -19,6 +19,8 @@ spring:
       order: 10
 
 app:
+  firebase:
+    project-id: ${FIREBASE_PROJECT_ID:}
   r2:
     account-id: ${R2_ACCOUNT_ID:}
     access-key-id: ${R2_ACCESS_KEY_ID:}

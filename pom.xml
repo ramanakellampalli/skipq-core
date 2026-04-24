@@ -118,6 +118,13 @@
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 
+		<!-- Firebase Admin SDK (push notifications) -->
+		<dependency>
+			<groupId>com.google.firebase</groupId>
+			<artifactId>firebase-admin</artifactId>
+			<version>9.3.0</version>
+		</dependency>
+
 		<!-- AWS S3 SDK (Cloudflare R2 is S3-compatible) -->
 		<dependency>
 			<groupId>software.amazon.awssdk</groupId>

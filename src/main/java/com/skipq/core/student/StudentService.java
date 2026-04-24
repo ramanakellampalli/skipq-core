@@ -88,6 +88,14 @@ public class StudentService {
     }
 
     @Transactional
+    public void registerDeviceToken(UUID userId, String token) {
+        User student = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        student.setFcmToken(token);
+        userRepository.save(student);
+    }
+
+    @Transactional
     public void deleteAccount(UUID userId) {
         List<Order> orders = orderRepository.findAllByUserId(userId);
         orderItemRepository.deleteAllByOrderIn(orders);

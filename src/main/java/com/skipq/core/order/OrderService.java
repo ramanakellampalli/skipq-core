@@ -9,6 +9,7 @@ import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.MenuVariant;
 import com.skipq.core.menu.MenuVariantRepository;
 import com.skipq.core.config.AblyService;
+import com.skipq.core.config.FcmService;
 import com.skipq.core.order.dto.*;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
@@ -32,6 +33,7 @@ public class OrderService {
     private final MenuItemRepository menuItemRepository;
     private final MenuVariantRepository menuVariantRepository;
     private final AblyService ablyService;
+    private final FcmService fcmService;
 
     @Transactional
     public OrderResponse placeOrder(UUID userId, PlaceOrderRequest request) {
@@ -175,7 +177,32 @@ public class OrderService {
         ablyService.publish("vendor:" + vendor.getId(), "order", response);
         ablyService.publish("order:" + order.getId(), "status", response);
 
+        fcmService.sendToUser(order.getUser(), notificationTitle(newStatus),
+                notificationBody(newStatus, vendor.getName()));
+
         return response;
+    }
+
+    private String notificationTitle(OrderStatus status) {
+        return switch (status) {
+            case ACCEPTED   -> "Order accepted!";
+            case PREPARING  -> "Being prepared";
+            case READY      -> "Order ready for pickup!";
+            case COMPLETED  -> "Order completed";
+            case REJECTED   -> "Order rejected";
+            default         -> "Order update";
+        };
+    }
+
+    private String notificationBody(OrderStatus status, String vendorName) {
+        return switch (status) {
+            case ACCEPTED   -> vendorName + " has accepted your order and will start preparing it shortly.";
+            case PREPARING  -> vendorName + " is preparing your order now.";
+            case READY      -> "Your order at " + vendorName + " is ready! Head over to pick it up.";
+            case COMPLETED  -> "Thanks for ordering from " + vendorName + ". Enjoy your meal!";
+            case REJECTED   -> "Unfortunately " + vendorName + " couldn't accept your order.";
+            default         -> "Your order status has been updated.";
+        };
     }
 
     private OrderResponse toResponse(Order order, List<OrderItem> items) {

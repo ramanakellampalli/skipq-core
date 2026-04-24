@@ -65,5 +65,5 @@ jobs:
             --min-instances 0 \
             --max-instances 2 \
             --port 8080 \
-            --set-env-vars "SPRING_PROFILES_ACTIVE=dev,R2_BUCKET_NAME=skipq-images,R2_PUBLIC_URL=https://pub-1a1d55258a2b4bd5affe723c3fed4dcd.r2.dev" \
+            --set-env-vars "SPRING_PROFILES_ACTIVE=dev,R2_BUCKET_NAME=skipq-images,R2_PUBLIC_URL=https://pub-1a1d55258a2b4bd5affe723c3fed4dcd.r2.dev,FIREBASE_PROJECT_ID=skipq-0521" \
             --set-secrets "JWT_SECRET=JWT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,RESEND_FROM_EMAIL=RESEND_FROM_EMAIL:latest,DEEP_LINK_BASE_URL=DEEP_LINK_BASE_URL:latest,DEV_DB_URL=DEV_DB_URL:latest,DEV_DB_USERNAME=DEV_DB_USERNAME:latest,DEV_DB_PASSWORD=DEV_DB_PASSWORD:latest,ABLY_API_KEY=ABLY_API_KEY:latest,RAZOR_TEST_ID=RAZOR_TEST_ID:latest,RAZOR_TEST_SECRET=RAZOR_TEST_SECRET:latest,RAZOR_WEBHOOK_SECRET=RAZOR_WEBHOOK_SECRET:latest,R2_ACCOUNT_ID=R2_ACCOUNT_ID:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest"
