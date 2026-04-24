@@ -55,6 +55,9 @@ public class User {
     @Column(name = "otp_expires_at")
     private LocalDateTime otpExpiresAt;
 
+    @Column(name = "fcm_token")
+    private String fcmToken;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

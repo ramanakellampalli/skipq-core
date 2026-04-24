@@ -40,6 +40,13 @@ public class StudentController {
         return orderService.placeOrder(userId(userDetails), request);
     }
 
+    @PutMapping("/device-token")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void registerDeviceToken(@AuthenticationPrincipal UserDetails userDetails,
+                                    @RequestBody java.util.Map<String, String> body) {
+        studentService.registerDeviceToken(userId(userDetails), body.get("token"));
+    }
+
     @DeleteMapping("/account")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
