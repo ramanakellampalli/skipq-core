@@ -12,6 +12,7 @@ import com.skipq.core.order.dto.OrderItemResponse;
 import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.student.dto.StudentProfile;
 import com.skipq.core.student.dto.StudentSyncResponse;
+import com.skipq.core.config.VendorImageService;
 import com.skipq.core.vendor.VendorService;
 import com.skipq.core.vendor.dto.VendorResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +40,7 @@ public class StudentService {
     private final MenuItemService menuItemService;
     private final VendorService vendorService;
     private final UserRepository userRepository;
+    private final VendorImageService vendorImageService;
 
     @Transactional(readOnly = true)
     public StudentSyncResponse sync(UUID userId) {
@@ -70,7 +74,13 @@ public class StudentService {
 
         OrderResponse activeOrder = activeOrders.isEmpty() ? null : activeOrders.get(0);
 
-        return new StudentSyncResponse(profile, vendors, activeOrder, pastOrders);
+        Map<String, List<String>> vendorImages = vendors.stream()
+                .collect(Collectors.toMap(
+                        v -> v.id().toString(),
+                        v -> vendorImageService.getImagesForVendor(v.id())
+                ));
+
+        return new StudentSyncResponse(profile, vendors, activeOrder, pastOrders, vendorImages);
     }
 
     public StudentMenuResponse getAvailableMenu(UUID vendorId) {
