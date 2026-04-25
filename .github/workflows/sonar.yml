@@ -1,0 +1,31 @@
+name: SonarCloud
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  sonar:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for blame and new-code detection
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build, test and analyze
+        run: ./mvnw verify sonar:sonar -B
+        env:
+          SPRING_PROFILES_ACTIVE: test
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
