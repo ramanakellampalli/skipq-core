@@ -86,7 +86,8 @@ public class AdminService {
                     .pan("ABCDE1234F")
                     .bankAccount("0000000000")
                     .ifsc("SBIN0000000")
-                    .gstRegistered(false);
+                    .gstRegistered(true)
+                    .gstin("29ABCDE1234F1Z5");
 
             log.info("[DEV] Vendor created: {} — login: {} / {}", request.vendorName(), request.email(), DEV_VENDOR_PASSWORD);
         } else {
