@@ -83,7 +83,7 @@ public class AdminService {
             vendorBuilder
                     .user(user)
                     .businessName(request.vendorName())
-                    .pan("TESTPAN0000")
+                    .pan("ABCDE1234F")
                     .bankAccount("0000000000")
                     .ifsc("SBIN0000000")
                     .gstRegistered(false);
