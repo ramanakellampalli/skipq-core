@@ -86,16 +86,14 @@ public class OrderService {
 
         BigDecimal rate025 = new BigDecimal("0.025");
         BigDecimal rate03  = new BigDecimal("0.03");
-        BigDecimal rate02  = new BigDecimal("0.02");
 
         BigDecimal cgst = vendor.isGstRegistered() ? subtotal.multiply(rate025).setScale(2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO;
         BigDecimal sgst = vendor.isGstRegistered() ? subtotal.multiply(rate025).setScale(2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO;
         BigDecimal igst = BigDecimal.ZERO;
         BigDecimal taxAmount = cgst.add(sgst).add(igst);
 
-        BigDecimal platformFee        = subtotal.multiply(rate03).setScale(2, java.math.RoundingMode.HALF_UP);
-        BigDecimal paymentTerminalFee = subtotal.multiply(rate02).setScale(2, java.math.RoundingMode.HALF_UP);
-        BigDecimal totalServiceFee    = platformFee.add(paymentTerminalFee);
+        BigDecimal platformFee     = subtotal.multiply(rate03).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal totalServiceFee = platformFee;
 
         BigDecimal totalAmount = subtotal.add(taxAmount).add(totalServiceFee);
 
@@ -110,7 +108,6 @@ public class OrderService {
                 .igst(igst)
                 .taxAmount(taxAmount)
                 .platformFee(platformFee)
-                .paymentTerminalFee(paymentTerminalFee)
                 .totalServiceFee(totalServiceFee)
                 .totalAmount(totalAmount)
                 .estimatedReadyAt(LocalDateTime.now().plusMinutes(vendor.getPrepTime()))
@@ -221,7 +218,7 @@ public class OrderService {
         var vendor  = new OrderResponse.VendorInfo(order.getVendor().getId(), order.getVendor().getName());
         var state   = new OrderResponse.OrderState(order.getStatus(), order.getPaymentStatus());
         var tax     = new OrderResponse.TaxBreakdown(order.getCgst(), order.getSgst(), order.getIgst(), order.getTaxAmount());
-        var fees    = new OrderResponse.Fees(order.getPlatformFee(), order.getPaymentTerminalFee(), order.getTotalServiceFee());
+        var fees    = new OrderResponse.Fees(order.getPlatformFee(), order.getTotalServiceFee());
         var pricing = new OrderResponse.Pricing(order.getSubtotal(), tax, fees, order.getTotalAmount());
         var timeline = new OrderResponse.Timeline(order.getCreatedAt(), order.getEstimatedReadyAt());
 

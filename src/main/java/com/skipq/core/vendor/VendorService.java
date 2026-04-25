@@ -2,6 +2,7 @@ package com.skipq.core.vendor;
 
 import com.skipq.core.auth.UserRepository;
 import com.skipq.core.menu.MenuCategoryRepository;
+import com.skipq.core.menu.MenuItem;
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.MenuItemService;
 import com.skipq.core.menu.dto.MenuCategoryResponse;
@@ -71,7 +72,7 @@ public class VendorService {
             var vendorInfo = new OrderResponse.VendorInfo(order.getVendor().getId(), order.getVendor().getName());
             var state      = new OrderResponse.OrderState(order.getStatus(), order.getPaymentStatus());
             var tax        = new OrderResponse.TaxBreakdown(order.getCgst(), order.getSgst(), order.getIgst(), order.getTaxAmount());
-            var fees       = new OrderResponse.Fees(order.getPlatformFee(), order.getPaymentTerminalFee(), order.getTotalServiceFee());
+            var fees       = new OrderResponse.Fees(order.getPlatformFee(), order.getTotalServiceFee());
             var pricing    = new OrderResponse.Pricing(order.getSubtotal(), tax, fees, order.getTotalAmount());
             var timeline   = new OrderResponse.Timeline(order.getCreatedAt(), order.getEstimatedReadyAt());
             return new OrderResponse(order.getId(), vendorInfo, state, pricing, timeline, itemResponses);
@@ -93,7 +94,7 @@ public class VendorService {
         List<MenuCategoryResponse> categories = categoryRepository.findAllByVendorIdOrdered(vendor.getId())
                 .stream().map(c -> {
                     Set<UUID> categoryItemIds = c.getItems().stream()
-                            .map(item -> item.getId()).collect(Collectors.toSet());
+                            .map(MenuItem::getId).collect(Collectors.toSet());
                     List<MenuItemResponse> items = allItems.stream()
                             .filter(i -> categoryItemIds.contains(i.id()))
                             .toList();
