@@ -2,6 +2,7 @@ package com.skipq.core.vendor;
 
 import com.skipq.core.auth.UserRepository;
 import com.skipq.core.menu.MenuCategoryRepository;
+import com.skipq.core.menu.MenuItem;
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.MenuItemService;
 import com.skipq.core.menu.dto.MenuCategoryResponse;
@@ -93,7 +94,7 @@ public class VendorService {
         List<MenuCategoryResponse> categories = categoryRepository.findAllByVendorIdOrdered(vendor.getId())
                 .stream().map(c -> {
                     Set<UUID> categoryItemIds = c.getItems().stream()
-                            .map(item -> item.getId()).collect(Collectors.toSet());
+                            .map(MenuItem::getId).collect(Collectors.toSet());
                     List<MenuItemResponse> items = allItems.stream()
                             .filter(i -> categoryItemIds.contains(i.id()))
                             .toList();
