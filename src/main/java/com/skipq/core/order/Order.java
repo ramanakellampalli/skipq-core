@@ -63,9 +63,6 @@ public class Order {
     @Column(name = "platform_fee", nullable = false, precision = 10, scale = 2)
     private BigDecimal platformFee;
 
-    @Column(name = "payment_terminal_fee", nullable = false, precision = 10, scale = 2)
-    private BigDecimal paymentTerminalFee;
-
     @Column(name = "total_service_fee", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalServiceFee;
 
