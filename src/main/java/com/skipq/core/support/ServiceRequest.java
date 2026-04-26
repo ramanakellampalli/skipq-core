@@ -36,9 +36,6 @@ public class ServiceRequest {
     @Column(nullable = false, length = 30)
     private ServiceRequestType type;
 
-    @Column(nullable = false, length = 255)
-    private String subject;
-
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 
