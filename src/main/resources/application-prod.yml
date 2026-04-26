@@ -28,4 +28,5 @@ management:
 
 logging:
   level:
+    root: WARN
     com.skipq: INFO

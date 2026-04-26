@@ -18,5 +18,7 @@ otp:
 
 logging:
   level:
+    root: WARN
     com.skipq: DEBUG
     org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE

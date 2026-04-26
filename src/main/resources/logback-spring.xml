@@ -5,9 +5,12 @@
     <springProfile name="local">
         <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
         <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
-        <root level="INFO">
+        <root level="WARN">
             <appender-ref ref="CONSOLE"/>
         </root>
+        <logger name="com.skipq" level="DEBUG"/>
+        <logger name="org.springframework.web.servlet.DispatcherServlet" level="DEBUG"/>
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
     </springProfile>
 
     <!-- ── Dev + Prod: structured JSON for GCP Cloud Logging ── -->
@@ -47,9 +50,10 @@
             </encoder>
         </appender>
 
-        <root level="INFO">
+        <root level="WARN">
             <appender-ref ref="JSON"/>
         </root>
+        <logger name="com.skipq" level="INFO"/>
 
     </springProfile>
 
