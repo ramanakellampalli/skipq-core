@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ── Local: keep Spring Boot's default human-readable console output ── -->
+    <springProfile name="local">
+        <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+        <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.skipq" level="DEBUG"/>
+        <logger name="org.springframework.web.servlet.DispatcherServlet" level="DEBUG"/>
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+    </springProfile>
+
+    <!-- ── Dev + Prod: structured JSON for GCP Cloud Logging ── -->
+    <springProfile name="dev,prod">
+
+        <conversionRule conversionWord="gcpSeverity"
+                        converterClass="com.skipq.core.logging.CloudSeverityConverter"/>
+
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <!-- GCP expects "time" and "severity" at the top level -->
+                    <timestamp>
+                        <fieldName>time</fieldName>
+                        <timeZone>UTC</timeZone>
+                    </timestamp>
+                    <pattern>
+                        <pattern>{"severity": "%gcpSeverity"}</pattern>
+                    </pattern>
+                    <loggerName>
+                        <fieldName>logger</fieldName>
+                        <shortenedLoggerNameLength>36</shortenedLoggerNameLength>
+                    </loggerName>
+                    <message/>
+                    <!-- MDC fields (requestId, etc.) appear as top-level JSON keys -->
+                    <mdc/>
+                    <!-- Full stack trace on exceptions -->
+                    <stackTrace>
+                        <fieldName>stack_trace</fieldName>
+                        <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                            <maxDepthPerCause>20</maxDepthPerCause>
+                            <shortenedClassNameLength>36</shortenedClassNameLength>
+                            <rootCauseFirst>true</rootCauseFirst>
+                        </throwableConverter>
+                    </stackTrace>
+                </providers>
+            </encoder>
+        </appender>
+
+        <root level="WARN">
+            <appender-ref ref="JSON"/>
+        </root>
+        <logger name="com.skipq" level="INFO"/>
+
+    </springProfile>
+
+</configuration>

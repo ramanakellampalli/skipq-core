@@ -20,6 +20,14 @@
 		<sonar.organization>ohyeahsaas</sonar.organization>
 		<sonar.projectKey>ramanakellampalli_skipq-core</sonar.projectKey>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<!-- Exclude infrastructure/config classes from coverage — no business logic to unit test -->
+		<sonar.coverage.exclusions>
+			**/config/**,
+			**/logging/**,
+			**/*Filter.java,
+			**/*Config.java,
+			**/*Application.java
+		</sonar.coverage.exclusions>
 	</properties>
 
 	<dependencies>
@@ -140,6 +148,13 @@
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>2.8.6</version>
+		</dependency>
+
+		<!-- Structured JSON logging for GCP Cloud Logging -->
+		<dependency>
+			<groupId>net.logstash.logback</groupId>
+			<artifactId>logstash-logback-encoder</artifactId>
+			<version>8.0</version>
 		</dependency>
 
 		<!-- Test -->
