@@ -12,6 +12,8 @@ import com.skipq.core.order.OrderRepository;
 import com.skipq.core.order.dto.OrderItemResponse;
 import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.order.dto.OrderStatsProjection;
+import com.skipq.core.support.ServiceRequestService;
+import com.skipq.core.support.dto.AdminServiceRequestResponse;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import com.skipq.core.vendor.dto.VendorResponse;
@@ -39,6 +41,7 @@ public class AdminService {
     private final OrderRepository orderRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final ServiceRequestService serviceRequestService;
 
     @Value("${otp.bypass:false}")
     private boolean bypass;
@@ -151,6 +154,8 @@ public class AdminService {
                 projection.getRevenue()
         );
 
-        return new AdminSyncResponse(stats, campuses, vendors, orders);
+        List<AdminServiceRequestResponse> serviceRequests = serviceRequestService.findAll();
+
+        return new AdminSyncResponse(stats, campuses, vendors, orders, serviceRequests);
     }
 }

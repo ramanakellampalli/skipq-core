@@ -5,11 +5,16 @@ import com.skipq.core.admin.dto.CreateCampusRequest;
 import com.skipq.core.admin.dto.CreateVendorRequest;
 import com.skipq.core.campus.dto.CampusResponse;
 import com.skipq.core.config.R2ImageService;
+import com.skipq.core.support.ServiceRequestService;
+import com.skipq.core.support.dto.AdminServiceRequestResponse;
+import com.skipq.core.support.dto.UpdateServiceRequestRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -19,6 +24,7 @@ public class AdminController {
 
     private final AdminService adminService;
     private final R2ImageService r2ImageService;
+    private final ServiceRequestService serviceRequestService;
 
     @GetMapping("/sync")
     public AdminSyncResponse sync() {
@@ -35,6 +41,13 @@ public class AdminController {
     @ResponseStatus(HttpStatus.CREATED)
     public void createVendor(@Valid @RequestBody CreateVendorRequest request) {
         adminService.createVendor(request);
+    }
+
+    @PutMapping("/support/{id}")
+    public AdminServiceRequestResponse updateServiceRequest(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateServiceRequestRequest request) {
+        return serviceRequestService.update(id, request);
     }
 
     @PostMapping("/r2/refresh-cache")
