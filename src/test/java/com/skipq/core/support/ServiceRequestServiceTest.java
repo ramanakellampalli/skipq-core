@@ -49,16 +49,14 @@ class ServiceRequestServiceTest {
 
     @Test
     void create_savesAndReturnsUserResponse() {
-        var request = new CreateServiceRequestRequest(
-                ServiceRequestType.PAYMENT_ISSUE, "Charged twice", "Desc");
+        var request = new CreateServiceRequestRequest(ServiceRequestType.PAYMENT_ISSUE, "Charged twice");
 
         ServiceRequest saved = ServiceRequest.builder()
                 .id(UUID.randomUUID())
                 .user(user)
                 .role(UserRole.STUDENT)
                 .type(ServiceRequestType.PAYMENT_ISSUE)
-                .subject("Charged twice")
-                .description("Desc")
+                .description("Charged twice")
                 .status(ServiceRequestStatus.OPEN)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -69,7 +67,6 @@ class ServiceRequestServiceTest {
         ServiceRequestResponse response = service.create(userId, request);
 
         assertThat(response.type()).isEqualTo(ServiceRequestType.PAYMENT_ISSUE);
-        assertThat(response.subject()).isEqualTo("Charged twice");
         assertThat(response.status()).isEqualTo(ServiceRequestStatus.OPEN);
         assertThat(response.adminResponse()).isNull();
         verify(repository).save(any(ServiceRequest.class));
@@ -79,7 +76,7 @@ class ServiceRequestServiceTest {
     void create_throwsWhenUserNotFound() {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        var request = new CreateServiceRequestRequest(ServiceRequestType.OTHER, "s", "d");
+        var request = new CreateServiceRequestRequest(ServiceRequestType.OTHER, "desc");
         assertThatThrownBy(() -> service.create(userId, request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("User not found");
@@ -94,7 +91,7 @@ class ServiceRequestServiceTest {
         UUID srId = UUID.randomUUID();
         ServiceRequest sr = ServiceRequest.builder()
                 .id(srId).user(user).role(UserRole.STUDENT)
-                .type(ServiceRequestType.TECHNICAL).subject("Bug").description("Details")
+                .type(ServiceRequestType.TECHNICAL).description("Details")
                 .status(ServiceRequestStatus.OPEN)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -115,7 +112,7 @@ class ServiceRequestServiceTest {
         UUID srId = UUID.randomUUID();
         ServiceRequest sr = ServiceRequest.builder()
                 .id(srId).user(user).role(UserRole.VENDOR)
-                .type(ServiceRequestType.PAYOUT_ISSUE).subject("No payout").description("Details")
+                .type(ServiceRequestType.PAYOUT_ISSUE).description("Details")
                 .status(ServiceRequestStatus.OPEN)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -135,7 +132,7 @@ class ServiceRequestServiceTest {
         UUID srId = UUID.randomUUID();
         ServiceRequest sr = ServiceRequest.builder()
                 .id(srId).user(user).role(UserRole.STUDENT)
-                .type(ServiceRequestType.OTHER).subject("s").description("d")
+                .type(ServiceRequestType.OTHER).description("desc")
                 .status(ServiceRequestStatus.OPEN)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -165,7 +162,7 @@ class ServiceRequestServiceTest {
     void findByUser_returnsUserResponses() {
         ServiceRequest sr = ServiceRequest.builder()
                 .id(UUID.randomUUID()).user(user).role(UserRole.STUDENT)
-                .type(ServiceRequestType.ACCOUNT_ISSUE).subject("Login").description("Desc")
+                .type(ServiceRequestType.ACCOUNT_ISSUE).description("Login broken")
                 .status(ServiceRequestStatus.OPEN).createdAt(LocalDateTime.now()).build();
 
         when(repository.findAllByUserIdOrderByCreatedAtDesc(userId)).thenReturn(List.of(sr));
@@ -173,7 +170,7 @@ class ServiceRequestServiceTest {
         List<ServiceRequestResponse> result = service.findByUser(userId);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).subject()).isEqualTo("Login");
+        assertThat(result.get(0).type()).isEqualTo(ServiceRequestType.ACCOUNT_ISSUE);
     }
 
     // --- findAll ---
@@ -182,7 +179,7 @@ class ServiceRequestServiceTest {
     void findAll_returnsAdminResponses() {
         ServiceRequest sr = ServiceRequest.builder()
                 .id(UUID.randomUUID()).user(user).role(UserRole.VENDOR)
-                .type(ServiceRequestType.BILLING_ISSUE).subject("Invoice").description("Desc")
+                .type(ServiceRequestType.BILLING_ISSUE).description("Invoice wrong")
                 .status(ServiceRequestStatus.OPEN).createdAt(LocalDateTime.now()).build();
 
         when(repository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(sr));
@@ -201,7 +198,7 @@ class ServiceRequestServiceTest {
         LocalDateTime now = LocalDateTime.now();
         ServiceRequest sr = ServiceRequest.builder()
                 .id(UUID.randomUUID()).user(user).role(UserRole.STUDENT)
-                .type(ServiceRequestType.REFUND_ISSUE).subject("Refund").description("Details")
+                .type(ServiceRequestType.REFUND_ISSUE).description("Details")
                 .status(ServiceRequestStatus.RESOLVED)
                 .adminResponse("Refunded").adminNotes("Internal").adminRespondedAt(now)
                 .createdAt(now).build();

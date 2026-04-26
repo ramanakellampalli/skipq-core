@@ -9,7 +9,6 @@ import java.util.UUID;
 public record ServiceRequestResponse(
         UUID id,
         ServiceRequestType type,
-        String subject,
         ServiceRequestStatus status,
         String adminResponse,
         LocalDateTime adminRespondedAt,

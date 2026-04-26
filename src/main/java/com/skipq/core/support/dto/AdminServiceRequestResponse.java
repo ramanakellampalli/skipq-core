@@ -13,7 +13,6 @@ public record AdminServiceRequestResponse(
         String userName,
         String userEmail,
         ServiceRequestType type,
-        String subject,
         String description,
         ServiceRequestStatus status,
         String adminResponse,

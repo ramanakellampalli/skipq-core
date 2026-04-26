@@ -30,7 +30,6 @@ public class ServiceRequestService {
                 .user(user)
                 .role(user.getRole())
                 .type(request.type())
-                .subject(request.subject())
                 .description(request.description())
                 .build();
 
@@ -69,7 +68,6 @@ public class ServiceRequestService {
         return new ServiceRequestResponse(
                 sr.getId(),
                 sr.getType(),
-                sr.getSubject(),
                 sr.getStatus(),
                 sr.getAdminResponse(),
                 sr.getAdminRespondedAt(),
@@ -84,7 +82,6 @@ public class ServiceRequestService {
                 sr.getUser().getName(),
                 sr.getUser().getEmail(),
                 sr.getType(),
-                sr.getSubject(),
                 sr.getDescription(),
                 sr.getStatus(),
                 sr.getAdminResponse(),
