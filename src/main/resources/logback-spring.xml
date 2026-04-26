@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
+    <springProperty scope="context" name="activeProfile" source="spring.profiles.active" defaultValue="unknown"/>
+
     <!-- ── Local: keep Spring Boot's default human-readable console output ── -->
     <springProfile name="local">
         <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
@@ -28,7 +30,7 @@
                         <timeZone>UTC</timeZone>
                     </timestamp>
                     <pattern>
-                        <pattern>{"severity": "%gcpSeverity"}</pattern>
+                        <pattern>{"severity": "%gcpSeverity", "env": "${activeProfile}"}</pattern>
                     </pattern>
                     <loggerName>
                         <fieldName>logger</fieldName>
