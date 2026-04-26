@@ -142,6 +142,13 @@
 			<version>2.8.6</version>
 		</dependency>
 
+		<!-- Structured JSON logging for GCP Cloud Logging -->
+		<dependency>
+			<groupId>net.logstash.logback</groupId>
+			<artifactId>logstash-logback-encoder</artifactId>
+			<version>8.0</version>
+		</dependency>
+
 		<!-- Test -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
