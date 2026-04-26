@@ -79,8 +79,8 @@ class ServiceRequestServiceTest {
     void create_throwsWhenUserNotFound() {
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.create(userId,
-                new CreateServiceRequestRequest(ServiceRequestType.OTHER, "s", "d")))
+        var request = new CreateServiceRequestRequest(ServiceRequestType.OTHER, "s", "d");
+        assertThatThrownBy(() -> service.create(userId, request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("User not found");
 
@@ -153,8 +153,8 @@ class ServiceRequestServiceTest {
         UUID srId = UUID.randomUUID();
         when(repository.findById(srId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() ->
-                service.update(srId, new UpdateServiceRequestRequest(ServiceRequestStatus.CLOSED, null, null)))
+        var updateReq = new UpdateServiceRequestRequest(ServiceRequestStatus.CLOSED, null, null);
+        assertThatThrownBy(() -> service.update(srId, updateReq))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Service request not found");
     }
