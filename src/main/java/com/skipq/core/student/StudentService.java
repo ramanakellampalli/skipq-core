@@ -13,6 +13,8 @@ import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.student.dto.StudentProfile;
 import com.skipq.core.student.dto.StudentSyncResponse;
 import com.skipq.core.config.VendorImageService;
+import com.skipq.core.support.ServiceRequestService;
+import com.skipq.core.support.dto.ServiceRequestResponse;
 import com.skipq.core.vendor.VendorService;
 import com.skipq.core.vendor.dto.VendorResponse;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +43,7 @@ public class StudentService {
     private final VendorService vendorService;
     private final UserRepository userRepository;
     private final VendorImageService vendorImageService;
+    private final ServiceRequestService serviceRequestService;
 
     @Transactional(readOnly = true)
     public StudentSyncResponse sync(UUID userId) {
@@ -80,7 +83,9 @@ public class StudentService {
                         v -> vendorImageService.getImagesForVendor(v.id())
                 ));
 
-        return new StudentSyncResponse(profile, vendors, activeOrder, pastOrders, vendorImages);
+        List<ServiceRequestResponse> serviceRequests = serviceRequestService.findByUser(userId);
+
+        return new StudentSyncResponse(profile, vendors, activeOrder, pastOrders, vendorImages, serviceRequests);
     }
 
     public StudentMenuResponse getAvailableMenu(UUID vendorId) {

@@ -12,6 +12,8 @@ import com.skipq.core.order.OrderItemRepository;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.order.dto.OrderItemResponse;
 import com.skipq.core.order.dto.OrderResponse;
+import com.skipq.core.support.ServiceRequestService;
+import com.skipq.core.support.dto.ServiceRequestResponse;
 import com.skipq.core.vendor.dto.UpdateVendorRequest;
 import com.skipq.core.vendor.dto.VendorDashboardResponse;
 import com.skipq.core.vendor.dto.VendorResponse;
@@ -35,6 +37,7 @@ public class VendorService {
     private final MenuCategoryRepository categoryRepository;
     private final MenuItemService menuItemService;
     private final UserRepository userRepository;
+    private final ServiceRequestService serviceRequestService;
 
     public VendorResponse getProfile(UUID userId) {
         return toResponse(findByUserId(userId));
@@ -105,7 +108,9 @@ public class VendorService {
                 .filter(i -> i.categoryId() == null)
                 .toList();
 
-        return new VendorDashboardResponse(toResponse(vendor), activeOrders, pastOrders, categories, uncategorized);
+        List<ServiceRequestResponse> serviceRequests = serviceRequestService.findByUser(userId);
+
+        return new VendorDashboardResponse(toResponse(vendor), activeOrders, pastOrders, categories, uncategorized, serviceRequests);
     }
 
     public List<VendorResponse> getOpenVendors() {
