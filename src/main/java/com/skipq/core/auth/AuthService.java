@@ -5,6 +5,7 @@ import com.skipq.core.campus.Campus;
 import com.skipq.core.campus.CampusRepository;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.config.RazorpayService;
+import com.skipq.core.notification.EmailService;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final RazorpayService razorpayService;
     private final OtpService otpService;
+    private final EmailService emailService;
 
     @Value("${otp.allowed-test-domain:test.skipq.dev}")
     private String testDomain;
@@ -163,7 +165,19 @@ public class AuthService {
 
     @Transactional
     public OtpSentResponse forgotPassword(ForgotPasswordRequest request) {
-        userRepository.findByEmail(request.email()).ifPresent(otpService::generateAndSend);
+        userRepository.findByEmail(request.email()).ifPresent(user -> {
+            if (user.getRole() == UserRole.VENDOR) {
+                vendorRepository.findByUserId(user.getId()).ifPresent(vendor -> {
+                    String code = otpService.generateCode();
+                    vendor.setResetOtp(code);
+                    vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
+                    vendorRepository.save(vendor);
+                    emailService.sendOtp(user.getEmail(), user.getName(), code);
+                });
+            } else {
+                otpService.generateAndSend(user);
+            }
+        });
         return new OtpSentResponse("If an account exists for that email, an OTP has been sent.");
     }
 
@@ -172,12 +186,27 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid or expired OTP"));
 
-        if (!otpService.verify(user, request.otp())) {
-            throw new IllegalArgumentException("Invalid or expired OTP");
-        }
+        if (user.getRole() == UserRole.VENDOR) {
+            Vendor vendor = vendorRepository.findByUserId(user.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid or expired OTP"));
 
-        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
-        otpService.clear(user);
+            if (vendor.getResetOtp() == null || vendor.getResetOtpExpiresAt() == null
+                    || LocalDateTime.now().isAfter(vendor.getResetOtpExpiresAt())
+                    || !vendor.getResetOtp().equals(request.otp())) {
+                throw new IllegalArgumentException("Invalid or expired OTP");
+            }
+
+            user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+            vendor.setResetOtp(null);
+            vendor.setResetOtpExpiresAt(null);
+            vendorRepository.save(vendor);
+        } else {
+            if (!otpService.verify(user, request.otp())) {
+                throw new IllegalArgumentException("Invalid or expired OTP");
+            }
+            user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+            otpService.clear(user);
+        }
     }
 
     private Campus resolveCampus(String email) {
