@@ -64,6 +64,12 @@ public class Vendor {
     @Column(name = "kyc_approved", nullable = false)
     private boolean kycApproved = false;
 
+    @Column(name = "reset_otp", length = 6)
+    private String resetOtp;
+
+    @Column(name = "reset_otp_expires_at")
+    private LocalDateTime resetOtpExpiresAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

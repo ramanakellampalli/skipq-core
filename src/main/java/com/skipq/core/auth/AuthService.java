@@ -5,6 +5,7 @@ import com.skipq.core.campus.Campus;
 import com.skipq.core.campus.CampusRepository;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.config.RazorpayService;
+import com.skipq.core.notification.EmailService;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final RazorpayService razorpayService;
     private final OtpService otpService;
+    private final EmailService emailService;
 
     @Value("${otp.allowed-test-domain:test.skipq.dev}")
     private String testDomain;
@@ -159,6 +161,50 @@ public class AuthService {
         userRepository.save(user);
 
         return toAuthResponse(jwtService.generateToken(user), user);
+    }
+
+    @Transactional
+    public OtpSentResponse forgotPassword(ForgotPasswordRequest request) {
+        if (request.role() == UserRole.VENDOR) {
+            vendorRepository.findByUserEmail(request.email()).ifPresent(vendor -> {
+                String code = otpService.generateCode();
+                vendor.setResetOtp(code);
+                vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
+                vendorRepository.save(vendor);
+                emailService.sendOtp(vendor.getUser().getEmail(), vendor.getUser().getName(), code);
+            });
+        } else {
+            userRepository.findByEmail(request.email()).ifPresent(otpService::generateAndSend);
+        }
+        return new OtpSentResponse("If an account exists for that email, an OTP has been sent.");
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        if (request.role() == UserRole.VENDOR) {
+            Vendor vendor = vendorRepository.findByUserEmail(request.email())
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid or expired OTP"));
+
+            if (vendor.getResetOtp() == null || vendor.getResetOtpExpiresAt() == null
+                    || LocalDateTime.now().isAfter(vendor.getResetOtpExpiresAt())
+                    || !vendor.getResetOtp().equals(request.otp())) {
+                throw new IllegalArgumentException("Invalid or expired OTP");
+            }
+
+            vendor.getUser().setPasswordHash(passwordEncoder.encode(request.newPassword()));
+            vendor.setResetOtp(null);
+            vendor.setResetOtpExpiresAt(null);
+            vendorRepository.save(vendor);
+        } else {
+            User user = userRepository.findByEmail(request.email())
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid or expired OTP"));
+
+            if (!otpService.verify(user, request.otp())) {
+                throw new IllegalArgumentException("Invalid or expired OTP");
+            }
+            user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+            otpService.clear(user);
+        }
     }
 
     private Campus resolveCampus(String email) {

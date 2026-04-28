@@ -25,8 +25,12 @@ public class OtpService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    public String generateCode() {
+        return bypass ? fixedCode : String.format("%06d", RANDOM.nextInt(1_000_000));
+    }
+
     public void generateAndSend(User user) {
-        String code = bypass ? fixedCode : String.format("%06d", RANDOM.nextInt(1_000_000));
+        String code = generateCode();
 
         user.setOtpCode(code);
         user.setOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
