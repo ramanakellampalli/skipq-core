@@ -38,4 +38,15 @@ public class AuthController {
     public AuthResponse setupPassword(@Valid @RequestBody SetupPasswordRequest request) {
         return authService.setupPassword(request);
     }
+
+    @PostMapping("/forgot-password")
+    public OtpSentResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return authService.forgotPassword(request);
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+    }
 }

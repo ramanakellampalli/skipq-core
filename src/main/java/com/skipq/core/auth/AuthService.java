@@ -161,6 +161,25 @@ public class AuthService {
         return toAuthResponse(jwtService.generateToken(user), user);
     }
 
+    @Transactional
+    public OtpSentResponse forgotPassword(ForgotPasswordRequest request) {
+        userRepository.findByEmail(request.email()).ifPresent(otpService::generateAndSend);
+        return new OtpSentResponse("If an account exists for that email, an OTP has been sent.");
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired OTP"));
+
+        if (!otpService.verify(user, request.otp())) {
+            throw new IllegalArgumentException("Invalid or expired OTP");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        otpService.clear(user);
+    }
+
     private Campus resolveCampus(String email) {
         String domain = email.substring(email.indexOf('@') + 1);
         if (domain.equals(testDomain)) {
