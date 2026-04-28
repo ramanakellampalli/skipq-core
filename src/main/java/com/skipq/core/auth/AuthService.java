@@ -165,29 +165,24 @@ public class AuthService {
 
     @Transactional
     public OtpSentResponse forgotPassword(ForgotPasswordRequest request) {
-        userRepository.findByEmail(request.email()).ifPresent(user -> {
-            if (user.getRole() == UserRole.VENDOR) {
-                Vendor vendor = vendorRepository.findByUserId(user.getId())
-                        .orElseThrow(() -> new IllegalStateException("Vendor record missing for user " + user.getId()));
+        if (request.role() == UserRole.VENDOR) {
+            vendorRepository.findByUserEmail(request.email()).ifPresent(vendor -> {
                 String code = otpService.generateCode();
                 vendor.setResetOtp(code);
                 vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
                 vendorRepository.save(vendor);
-                emailService.sendOtp(user.getEmail(), user.getName(), code);
-            } else {
-                otpService.generateAndSend(user);
-            }
-        });
+                emailService.sendOtp(vendor.getUser().getEmail(), vendor.getUser().getName(), code);
+            });
+        } else {
+            userRepository.findByEmail(request.email()).ifPresent(otpService::generateAndSend);
+        }
         return new OtpSentResponse("If an account exists for that email, an OTP has been sent.");
     }
 
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired OTP"));
-
-        if (user.getRole() == UserRole.VENDOR) {
-            Vendor vendor = vendorRepository.findByUserId(user.getId())
+        if (request.role() == UserRole.VENDOR) {
+            Vendor vendor = vendorRepository.findByUserEmail(request.email())
                     .orElseThrow(() -> new IllegalArgumentException("Invalid or expired OTP"));
 
             if (vendor.getResetOtp() == null || vendor.getResetOtpExpiresAt() == null
@@ -196,11 +191,14 @@ public class AuthService {
                 throw new IllegalArgumentException("Invalid or expired OTP");
             }
 
-            user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+            vendor.getUser().setPasswordHash(passwordEncoder.encode(request.newPassword()));
             vendor.setResetOtp(null);
             vendor.setResetOtpExpiresAt(null);
             vendorRepository.save(vendor);
         } else {
+            User user = userRepository.findByEmail(request.email())
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid or expired OTP"));
+
             if (!otpService.verify(user, request.otp())) {
                 throw new IllegalArgumentException("Invalid or expired OTP");
             }

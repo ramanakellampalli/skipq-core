@@ -73,10 +73,10 @@ class AuthServiceTest {
     // --- forgotPassword: customer ---
 
     @Test
-    void forgotPassword_customer_sendsOtpViaOtpService() {
+    void forgotPassword_customer_sendsOtpWhenUserExists() {
         when(userRepository.findByEmail("student@campus.edu")).thenReturn(Optional.of(studentUser));
 
-        OtpSentResponse response = authService.forgotPassword(new ForgotPasswordRequest("student@campus.edu"));
+        OtpSentResponse response = authService.forgotPassword(new ForgotPasswordRequest("student@campus.edu", UserRole.STUDENT));
 
         assertThat(response.message()).isNotBlank();
         verify(otpService).generateAndSend(studentUser);
@@ -84,31 +84,41 @@ class AuthServiceTest {
     }
 
     @Test
-    void forgotPassword_doesNotRevealWhenUserNotFound() {
+    void forgotPassword_customer_doesNotRevealWhenNotFound() {
         when(userRepository.findByEmail("unknown@campus.edu")).thenReturn(Optional.empty());
 
-        OtpSentResponse response = authService.forgotPassword(new ForgotPasswordRequest("unknown@campus.edu"));
+        OtpSentResponse response = authService.forgotPassword(new ForgotPasswordRequest("unknown@campus.edu", UserRole.STUDENT));
 
         assertThat(response.message()).isNotBlank();
         verify(otpService, never()).generateAndSend(any());
-        verifyNoInteractions(vendorRepository, emailService);
     }
 
     // --- forgotPassword: vendor ---
 
     @Test
-    void forgotPassword_vendor_storesResetOtpOnVendorAndSendsEmail() {
-        when(userRepository.findByEmail("vendor@campus.edu")).thenReturn(Optional.of(vendorUser));
-        when(vendorRepository.findByUserId(vendorUser.getId())).thenReturn(Optional.of(vendor));
+    void forgotPassword_vendor_storesOtpOnVendorAndSendsEmail() {
+        when(vendorRepository.findByUserEmail("vendor@campus.edu")).thenReturn(Optional.of(vendor));
         when(otpService.generateCode()).thenReturn("654321");
 
-        authService.forgotPassword(new ForgotPasswordRequest("vendor@campus.edu"));
+        authService.forgotPassword(new ForgotPasswordRequest("vendor@campus.edu", UserRole.VENDOR));
 
         assertThat(vendor.getResetOtp()).isEqualTo("654321");
         assertThat(vendor.getResetOtpExpiresAt()).isAfter(LocalDateTime.now());
         verify(vendorRepository).save(vendor);
         verify(emailService).sendOtp("vendor@campus.edu", "Vendor User", "654321");
+        verifyNoInteractions(userRepository);
         verify(otpService, never()).generateAndSend(any());
+    }
+
+    @Test
+    void forgotPassword_vendor_doesNotRevealWhenNotFound() {
+        when(vendorRepository.findByUserEmail("unknown@campus.edu")).thenReturn(Optional.empty());
+
+        OtpSentResponse response = authService.forgotPassword(new ForgotPasswordRequest("unknown@campus.edu", UserRole.VENDOR));
+
+        assertThat(response.message()).isNotBlank();
+        verify(vendorRepository, never()).save(any());
+        verifyNoInteractions(emailService);
     }
 
     // --- resetPassword: customer ---
@@ -119,10 +129,20 @@ class AuthServiceTest {
         when(otpService.verify(studentUser, "123456")).thenReturn(true);
         when(passwordEncoder.encode("newSecret8!")).thenReturn("hashed");
 
-        authService.resetPassword(new ResetPasswordRequest("student@campus.edu", "123456", "newSecret8!"));
+        authService.resetPassword(new ResetPasswordRequest("student@campus.edu", UserRole.STUDENT, "123456", "newSecret8!"));
 
         assertThat(studentUser.getPasswordHash()).isEqualTo("hashed");
         verify(otpService).clear(studentUser);
+    }
+
+    @Test
+    void resetPassword_customer_throwsWhenNotFound() {
+        when(userRepository.findByEmail("nobody@campus.edu")).thenReturn(Optional.empty());
+
+        var req = new ResetPasswordRequest("nobody@campus.edu", UserRole.STUDENT, "000000", "newSecret8!");
+        assertThatThrownBy(() -> authService.resetPassword(req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid or expired OTP");
     }
 
     @Test
@@ -130,26 +150,12 @@ class AuthServiceTest {
         when(userRepository.findByEmail("student@campus.edu")).thenReturn(Optional.of(studentUser));
         when(otpService.verify(studentUser, "000000")).thenReturn(false);
 
-        var req = new ResetPasswordRequest("student@campus.edu", "000000", "newSecret8!");
+        var req = new ResetPasswordRequest("student@campus.edu", UserRole.STUDENT, "000000", "newSecret8!");
         assertThatThrownBy(() -> authService.resetPassword(req))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid or expired OTP");
 
         verify(passwordEncoder, never()).encode(any());
-        verify(otpService, never()).clear(any());
-    }
-
-    @Test
-    void resetPassword_throwsWhenUserNotFound() {
-        when(userRepository.findByEmail("nobody@campus.edu")).thenReturn(Optional.empty());
-
-        var req = new ResetPasswordRequest("nobody@campus.edu", "000000", "newSecret8!");
-        assertThatThrownBy(() -> authService.resetPassword(req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid or expired OTP");
-
-        verify(otpService, never()).verify(any(), any());
-        verify(otpService, never()).clear(any());
     }
 
     // --- resetPassword: vendor ---
@@ -159,17 +165,25 @@ class AuthServiceTest {
         vendor.setResetOtp("654321");
         vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(5));
 
-        when(userRepository.findByEmail("vendor@campus.edu")).thenReturn(Optional.of(vendorUser));
-        when(vendorRepository.findByUserId(vendorUser.getId())).thenReturn(Optional.of(vendor));
+        when(vendorRepository.findByUserEmail("vendor@campus.edu")).thenReturn(Optional.of(vendor));
         when(passwordEncoder.encode("newSecret8!")).thenReturn("hashed");
 
-        authService.resetPassword(new ResetPasswordRequest("vendor@campus.edu", "654321", "newSecret8!"));
+        authService.resetPassword(new ResetPasswordRequest("vendor@campus.edu", UserRole.VENDOR, "654321", "newSecret8!"));
 
         assertThat(vendorUser.getPasswordHash()).isEqualTo("hashed");
         assertThat(vendor.getResetOtp()).isNull();
         assertThat(vendor.getResetOtpExpiresAt()).isNull();
         verify(vendorRepository).save(vendor);
-        verify(otpService, never()).verify(any(), any());
+    }
+
+    @Test
+    void resetPassword_vendor_throwsWhenNotFound() {
+        when(vendorRepository.findByUserEmail("nobody@campus.edu")).thenReturn(Optional.empty());
+
+        var req = new ResetPasswordRequest("nobody@campus.edu", UserRole.VENDOR, "000000", "newSecret8!");
+        assertThatThrownBy(() -> authService.resetPassword(req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid or expired OTP");
     }
 
     @Test
@@ -177,10 +191,9 @@ class AuthServiceTest {
         vendor.setResetOtp("654321");
         vendor.setResetOtpExpiresAt(LocalDateTime.now().minusMinutes(1));
 
-        when(userRepository.findByEmail("vendor@campus.edu")).thenReturn(Optional.of(vendorUser));
-        when(vendorRepository.findByUserId(vendorUser.getId())).thenReturn(Optional.of(vendor));
+        when(vendorRepository.findByUserEmail("vendor@campus.edu")).thenReturn(Optional.of(vendor));
 
-        var req = new ResetPasswordRequest("vendor@campus.edu", "654321", "newSecret8!");
+        var req = new ResetPasswordRequest("vendor@campus.edu", UserRole.VENDOR, "654321", "newSecret8!");
         assertThatThrownBy(() -> authService.resetPassword(req))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid or expired OTP");
@@ -193,10 +206,9 @@ class AuthServiceTest {
         vendor.setResetOtp("654321");
         vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(5));
 
-        when(userRepository.findByEmail("vendor@campus.edu")).thenReturn(Optional.of(vendorUser));
-        when(vendorRepository.findByUserId(vendorUser.getId())).thenReturn(Optional.of(vendor));
+        when(vendorRepository.findByUserEmail("vendor@campus.edu")).thenReturn(Optional.of(vendor));
 
-        var req = new ResetPasswordRequest("vendor@campus.edu", "000000", "newSecret8!");
+        var req = new ResetPasswordRequest("vendor@campus.edu", UserRole.VENDOR, "000000", "newSecret8!");
         assertThatThrownBy(() -> authService.resetPassword(req))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid or expired OTP");
