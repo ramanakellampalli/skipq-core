@@ -167,13 +167,13 @@ public class AuthService {
     public OtpSentResponse forgotPassword(ForgotPasswordRequest request) {
         userRepository.findByEmail(request.email()).ifPresent(user -> {
             if (user.getRole() == UserRole.VENDOR) {
-                vendorRepository.findByUserId(user.getId()).ifPresent(vendor -> {
-                    String code = otpService.generateCode();
-                    vendor.setResetOtp(code);
-                    vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
-                    vendorRepository.save(vendor);
-                    emailService.sendOtp(user.getEmail(), user.getName(), code);
-                });
+                Vendor vendor = vendorRepository.findByUserId(user.getId())
+                        .orElseThrow(() -> new IllegalStateException("Vendor record missing for user " + user.getId()));
+                String code = otpService.generateCode();
+                vendor.setResetOtp(code);
+                vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
+                vendorRepository.save(vendor);
+                emailService.sendOtp(user.getEmail(), user.getName(), code);
             } else {
                 otpService.generateAndSend(user);
             }
