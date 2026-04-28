@@ -94,8 +94,8 @@ class AuthServiceTest {
     void resetPassword_throwsWhenUserNotFound() {
         when(userRepository.findByEmail("nobody@campus.edu")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() ->
-                authService.resetPassword(new ResetPasswordRequest("nobody@campus.edu", "000000", "newSecret8!")))
+        var req = new ResetPasswordRequest("nobody@campus.edu", "000000", "newSecret8!");
+        assertThatThrownBy(() -> authService.resetPassword(req))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid or expired OTP");
 
@@ -108,8 +108,8 @@ class AuthServiceTest {
         when(userRepository.findByEmail("test@campus.edu")).thenReturn(Optional.of(user));
         when(otpService.verify(user, "000000")).thenReturn(false);
 
-        assertThatThrownBy(() ->
-                authService.resetPassword(new ResetPasswordRequest("test@campus.edu", "000000", "newSecret8!")))
+        var req = new ResetPasswordRequest("test@campus.edu", "000000", "newSecret8!");
+        assertThatThrownBy(() -> authService.resetPassword(req))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid or expired OTP");
 
