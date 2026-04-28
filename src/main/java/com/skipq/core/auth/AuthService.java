@@ -174,7 +174,9 @@ public class AuthService {
                 emailService.sendOtp(vendor.getUser().getEmail(), vendor.getUser().getName(), code);
             });
         } else {
-            userRepository.findByEmail(request.email()).ifPresent(otpService::generateAndSend);
+            userRepository.findByEmail(request.email())
+                    .filter(u -> u.getRole() == UserRole.STUDENT)
+                    .ifPresent(otpService::generateAndSend);
         }
         return new OtpSentResponse("If an account exists for that email, an OTP has been sent.");
     }
@@ -197,6 +199,7 @@ public class AuthService {
             vendorRepository.save(vendor);
         } else {
             User user = userRepository.findByEmail(request.email())
+                    .filter(u -> u.getRole() == UserRole.STUDENT)
                     .orElseThrow(() -> new IllegalArgumentException("Invalid or expired OTP"));
 
             if (!otpService.verify(user, request.otp())) {
