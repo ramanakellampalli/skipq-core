@@ -5,7 +5,6 @@ import com.skipq.core.campus.Campus;
 import com.skipq.core.campus.CampusRepository;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.config.RazorpayService;
-import com.skipq.core.notification.EmailService;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +34,6 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final RazorpayService razorpayService;
     private final OtpService otpService;
-    private final EmailService emailService;
 
     @Value("${otp.allowed-test-domain:test.skipq.dev}")
     private String testDomain;
@@ -57,7 +55,7 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
-        otpService.generateAndSend(user);
+        otpService.generateAndSend(user, OtpPurpose.VERIFY_EMAIL);
 
         return new OtpSentResponse("OTP sent to " + request.email());
     }
@@ -85,7 +83,7 @@ public class AuthService {
 
         if (user.getRole() == UserRole.STUDENT && !user.isEmailVerified()) {
             log.debug("Student email not verified, sending OTP for user: {}", user.getId());
-            otpService.generateAndSend(user);
+            otpService.generateAndSend(user, OtpPurpose.VERIFY_EMAIL);
             throw new IllegalStateException("Email not verified. A new OTP has been sent to " + user.getEmail());
         }
 
@@ -174,12 +172,12 @@ public class AuthService {
             vendor.setResetOtp(code);
             vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
             vendorRepository.save(vendor);
-            emailService.sendOtp(vendor.getUser().getEmail(), vendor.getUser().getName(), code);
+            otpService.sendEmail(vendor.getUser().getEmail(), vendor.getUser().getName(), code, OtpPurpose.VENDOR_RESET);
         } else {
             User user = userRepository.findByEmail(request.email())
                     .filter(u -> u.getRole() == UserRole.STUDENT)
                     .orElseThrow(() -> new NoSuchElementException(NO_ACCOUNT_FOUND));
-            otpService.generateAndSend(user);
+            otpService.generateAndSend(user, OtpPurpose.STUDENT_RESET);
         }
         return new OtpSentResponse("If an account exists for that email, an OTP has been sent.");
     }

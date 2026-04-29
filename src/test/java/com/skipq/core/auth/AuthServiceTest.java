@@ -6,7 +6,6 @@ import com.skipq.core.auth.dto.ResetPasswordRequest;
 import com.skipq.core.campus.CampusRepository;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.config.RazorpayService;
-import com.skipq.core.notification.EmailService;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +37,6 @@ class AuthServiceTest {
     @Mock AuthenticationManager authenticationManager;
     @Mock RazorpayService razorpayService;
     @Mock OtpService otpService;
-    @Mock EmailService emailService;
 
     @InjectMocks AuthService authService;
 
@@ -80,8 +78,8 @@ class AuthServiceTest {
         OtpSentResponse response = authService.forgotPassword(new ForgotPasswordRequest("student@campus.edu", UserRole.STUDENT));
 
         assertThat(response.message()).isNotBlank();
-        verify(otpService).generateAndSend(studentUser);
-        verifyNoInteractions(vendorRepository, emailService);
+        verify(otpService).generateAndSend(studentUser, OtpPurpose.STUDENT_RESET);
+        verifyNoInteractions(vendorRepository);
     }
 
     @Test
@@ -93,7 +91,7 @@ class AuthServiceTest {
                 .isInstanceOf(NoSuchElementException.class)
                 .hasMessageContaining("No account found");
 
-        verify(otpService, never()).generateAndSend(any());
+        verify(otpService, never()).generateAndSend(any(), any());
     }
 
     @Test
@@ -105,7 +103,7 @@ class AuthServiceTest {
                 .isInstanceOf(NoSuchElementException.class)
                 .hasMessageContaining("No account found");
 
-        verify(otpService, never()).generateAndSend(any());
+        verify(otpService, never()).generateAndSend(any(), any());
     }
 
     // --- forgotPassword: vendor ---
@@ -120,9 +118,9 @@ class AuthServiceTest {
         assertThat(vendor.getResetOtp()).isEqualTo("654321");
         assertThat(vendor.getResetOtpExpiresAt()).isAfter(LocalDateTime.now());
         verify(vendorRepository).save(vendor);
-        verify(emailService).sendOtp("vendor@campus.edu", "Vendor User", "654321");
+        verify(otpService).sendEmail("vendor@campus.edu", "Vendor User", "654321", OtpPurpose.VENDOR_RESET);
         verifyNoInteractions(userRepository);
-        verify(otpService, never()).generateAndSend(any());
+        verify(otpService, never()).generateAndSend(any(), any());
     }
 
     @Test
@@ -135,7 +133,6 @@ class AuthServiceTest {
                 .hasMessageContaining("No account found");
 
         verify(vendorRepository, never()).save(any());
-        verifyNoInteractions(emailService);
     }
 
     // --- resetPassword: customer ---
