@@ -27,7 +27,8 @@
 			**/*Filter.java,
 			**/*Config.java,
 			**/*Application.java,
-			**/notification/EmailService.java
+			**/notification/EmailService.java,
+			**/notification/EmailDeliveryException.java
 		</sonar.coverage.exclusions>
 		<sonar.cpd.exclusions>
 			**/notification/EmailService.java
