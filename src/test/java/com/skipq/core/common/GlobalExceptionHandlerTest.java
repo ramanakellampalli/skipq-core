@@ -12,9 +12,9 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void handleNotFound_returns404WithMessage() {
-        ErrorResponse response = handler.handleNotFound(new NoSuchElementException("No account found for this email"));
+        ErrorResponse response = handler.handleNotFound(new NoSuchElementException("No account found"));
 
         assertThat(response.status()).isEqualTo(404);
-        assertThat(response.message()).isEqualTo("No account found for this email");
+        assertThat(response.message()).isEqualTo("No account found");
     }
 }
