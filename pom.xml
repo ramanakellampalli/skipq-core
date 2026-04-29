@@ -20,14 +20,18 @@
 		<sonar.organization>ohyeahsaas</sonar.organization>
 		<sonar.projectKey>ramanakellampalli_skipq-core</sonar.projectKey>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
-		<!-- Exclude infrastructure/config classes from coverage — no business logic to unit test -->
+		<!-- Exclude infrastructure/config classes and pure-template files from coverage/duplication -->
 		<sonar.coverage.exclusions>
 			**/config/**,
 			**/logging/**,
 			**/*Filter.java,
 			**/*Config.java,
-			**/*Application.java
+			**/*Application.java,
+			**/notification/EmailService.java
 		</sonar.coverage.exclusions>
+		<sonar.cpd.exclusions>
+			**/notification/EmailService.java
+		</sonar.cpd.exclusions>
 	</properties>
 
 	<dependencies>
