@@ -35,6 +35,22 @@
 		</sonar.cpd.exclusions>
 	</properties>
 
+	<dependencyManagement>
+		<dependencies>
+			<!-- Force OkHttp 4.x — Razorpay pulls in 3.10.0 which lacks MediaType.get() required by Resend SDK -->
+			<dependency>
+				<groupId>com.squareup.okhttp3</groupId>
+				<artifactId>okhttp</artifactId>
+				<version>4.12.0</version>
+			</dependency>
+			<dependency>
+				<groupId>com.squareup.okhttp3</groupId>
+				<artifactId>logging-interceptor</artifactId>
+				<version>4.12.0</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 	<dependencies>
 		<!-- Web -->
 		<dependency>
