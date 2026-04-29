@@ -96,6 +96,18 @@ class AuthServiceTest {
         verify(otpService, never()).generateAndSend(any());
     }
 
+    @Test
+    void forgotPassword_customer_throwsWhenEmailBelongsToVendor() {
+        when(userRepository.findByEmail("vendor@campus.edu")).thenReturn(Optional.of(vendorUser));
+
+        var req = new ForgotPasswordRequest("vendor@campus.edu", UserRole.STUDENT);
+        assertThatThrownBy(() -> authService.forgotPassword(req))
+                .isInstanceOf(NoSuchElementException.class)
+                .hasMessageContaining("No account found");
+
+        verify(otpService, never()).generateAndSend(any());
+    }
+
     // --- forgotPassword: vendor ---
 
     @Test
