@@ -5,7 +5,6 @@ import com.skipq.core.campus.Campus;
 import com.skipq.core.campus.CampusRepository;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.config.RazorpayService;
-import com.skipq.core.notification.EmailService;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +34,6 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final RazorpayService razorpayService;
     private final OtpService otpService;
-    private final EmailService emailService;
 
     @Value("${otp.allowed-test-domain:test.skipq.dev}")
     private String testDomain;
@@ -174,7 +172,7 @@ public class AuthService {
             vendor.setResetOtp(code);
             vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
             vendorRepository.save(vendor);
-            emailService.sendOtp(vendor.getUser().getEmail(), vendor.getUser().getName(), code);
+            otpService.sendEmail(vendor.getUser().getEmail(), vendor.getUser().getName(), code);
         } else {
             User user = userRepository.findByEmail(request.email())
                     .filter(u -> u.getRole() == UserRole.STUDENT)

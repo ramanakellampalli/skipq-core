@@ -13,7 +13,7 @@ spring:
     show-sql: true
 
 otp:
-  bypass: true
+  bypass: false
   fixed-code: "123456"
 
 logging:

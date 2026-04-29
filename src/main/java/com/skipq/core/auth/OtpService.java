@@ -43,6 +43,14 @@ public class OtpService {
         }
     }
 
+    public void sendEmail(String email, String name, String code) {
+        if (bypass) {
+            log.info("[DEV] OTP for {}: {}", email, code);
+        } else {
+            emailService.sendOtp(email, name, code);
+        }
+    }
+
     public boolean verify(User user, String code) {
         if (user.getOtpCode() == null || user.getOtpExpiresAt() == null) return false;
         if (LocalDateTime.now().isAfter(user.getOtpExpiresAt())) return false;
