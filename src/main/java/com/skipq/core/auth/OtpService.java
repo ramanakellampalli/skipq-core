@@ -29,7 +29,7 @@ public class OtpService {
         return bypass ? fixedCode : String.format("%06d", RANDOM.nextInt(1_000_000));
     }
 
-    public void generateAndSend(User user) {
+    public void generateAndSend(User user, OtpPurpose purpose) {
         String code = generateCode();
 
         user.setOtpCode(code);
@@ -39,15 +39,15 @@ public class OtpService {
         if (bypass) {
             log.info("[DEV] OTP for {}: {}", user.getEmail(), code);
         } else {
-            emailService.sendOtp(user.getEmail(), user.getName(), code);
+            emailService.sendOtp(user.getEmail(), user.getName(), code, purpose);
         }
     }
 
-    public void sendEmail(String email, String name, String code) {
+    public void sendEmail(String email, String name, String code, OtpPurpose purpose) {
         if (bypass) {
             log.info("[DEV] OTP for {}: {}", email, code);
         } else {
-            emailService.sendOtp(email, name, code);
+            emailService.sendOtp(email, name, code, purpose);
         }
     }
 

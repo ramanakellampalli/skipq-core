@@ -1,5 +1,6 @@
 package com.skipq.core.auth;
 
+import com.skipq.core.auth.OtpPurpose;
 import com.skipq.core.auth.dto.ForgotPasswordRequest;
 import com.skipq.core.auth.dto.OtpSentResponse;
 import com.skipq.core.auth.dto.ResetPasswordRequest;
@@ -78,7 +79,7 @@ class AuthServiceTest {
         OtpSentResponse response = authService.forgotPassword(new ForgotPasswordRequest("student@campus.edu", UserRole.STUDENT));
 
         assertThat(response.message()).isNotBlank();
-        verify(otpService).generateAndSend(studentUser);
+        verify(otpService).generateAndSend(studentUser, OtpPurpose.STUDENT_RESET);
         verifyNoInteractions(vendorRepository);
     }
 
@@ -91,7 +92,7 @@ class AuthServiceTest {
                 .isInstanceOf(NoSuchElementException.class)
                 .hasMessageContaining("No account found");
 
-        verify(otpService, never()).generateAndSend(any());
+        verify(otpService, never()).generateAndSend(any(), any());
     }
 
     @Test
@@ -103,7 +104,7 @@ class AuthServiceTest {
                 .isInstanceOf(NoSuchElementException.class)
                 .hasMessageContaining("No account found");
 
-        verify(otpService, never()).generateAndSend(any());
+        verify(otpService, never()).generateAndSend(any(), any());
     }
 
     // --- forgotPassword: vendor ---
@@ -118,9 +119,9 @@ class AuthServiceTest {
         assertThat(vendor.getResetOtp()).isEqualTo("654321");
         assertThat(vendor.getResetOtpExpiresAt()).isAfter(LocalDateTime.now());
         verify(vendorRepository).save(vendor);
-        verify(otpService).sendEmail("vendor@campus.edu", "Vendor User", "654321");
+        verify(otpService).sendEmail("vendor@campus.edu", "Vendor User", "654321", OtpPurpose.VENDOR_RESET);
         verifyNoInteractions(userRepository);
-        verify(otpService, never()).generateAndSend(any());
+        verify(otpService, never()).generateAndSend(any(), any());
     }
 
     @Test
