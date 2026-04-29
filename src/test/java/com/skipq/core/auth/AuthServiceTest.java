@@ -1,6 +1,5 @@
 package com.skipq.core.auth;
 
-import com.skipq.core.auth.OtpPurpose;
 import com.skipq.core.auth.dto.ForgotPasswordRequest;
 import com.skipq.core.auth.dto.OtpSentResponse;
 import com.skipq.core.auth.dto.ResetPasswordRequest;

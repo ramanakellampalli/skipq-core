@@ -245,7 +245,7 @@ public class EmailService {
             log.info("Email sent to {}", toEmail);
         } catch (ResendException e) {
             log.error("Failed to send email to {}: {}", toEmail, e.getMessage());
-            throw new RuntimeException("Failed to send email", e);
+            throw new EmailDeliveryException("Failed to send email", e);
         }
     }
 
