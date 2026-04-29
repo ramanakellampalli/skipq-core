@@ -19,6 +19,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -84,12 +85,14 @@ class AuthServiceTest {
     }
 
     @Test
-    void forgotPassword_customer_doesNotRevealWhenNotFound() {
+    void forgotPassword_customer_throwsWhenNotFound() {
         when(userRepository.findByEmail("unknown@campus.edu")).thenReturn(Optional.empty());
 
-        OtpSentResponse response = authService.forgotPassword(new ForgotPasswordRequest("unknown@campus.edu", UserRole.STUDENT));
+        var req = new ForgotPasswordRequest("unknown@campus.edu", UserRole.STUDENT);
+        assertThatThrownBy(() -> authService.forgotPassword(req))
+                .isInstanceOf(NoSuchElementException.class)
+                .hasMessageContaining("No account found");
 
-        assertThat(response.message()).isNotBlank();
         verify(otpService, never()).generateAndSend(any());
     }
 
@@ -111,12 +114,14 @@ class AuthServiceTest {
     }
 
     @Test
-    void forgotPassword_vendor_doesNotRevealWhenNotFound() {
+    void forgotPassword_vendor_throwsWhenNotFound() {
         when(vendorRepository.findByUserEmail("unknown@campus.edu")).thenReturn(Optional.empty());
 
-        OtpSentResponse response = authService.forgotPassword(new ForgotPasswordRequest("unknown@campus.edu", UserRole.VENDOR));
+        var req = new ForgotPasswordRequest("unknown@campus.edu", UserRole.VENDOR);
+        assertThatThrownBy(() -> authService.forgotPassword(req))
+                .isInstanceOf(NoSuchElementException.class)
+                .hasMessageContaining("No account found");
 
-        assertThat(response.message()).isNotBlank();
         verify(vendorRepository, never()).save(any());
         verifyNoInteractions(emailService);
     }

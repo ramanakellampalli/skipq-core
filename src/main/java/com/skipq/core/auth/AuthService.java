@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @Slf4j
 @Service
@@ -166,17 +167,18 @@ public class AuthService {
     @Transactional
     public OtpSentResponse forgotPassword(ForgotPasswordRequest request) {
         if (request.role() == UserRole.VENDOR) {
-            vendorRepository.findByUserEmail(request.email()).ifPresent(vendor -> {
-                String code = otpService.generateCode();
-                vendor.setResetOtp(code);
-                vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
-                vendorRepository.save(vendor);
-                emailService.sendOtp(vendor.getUser().getEmail(), vendor.getUser().getName(), code);
-            });
+            Vendor vendor = vendorRepository.findByUserEmail(request.email())
+                    .orElseThrow(() -> new NoSuchElementException("No account found for this email"));
+            String code = otpService.generateCode();
+            vendor.setResetOtp(code);
+            vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
+            vendorRepository.save(vendor);
+            emailService.sendOtp(vendor.getUser().getEmail(), vendor.getUser().getName(), code);
         } else {
-            userRepository.findByEmail(request.email())
+            User user = userRepository.findByEmail(request.email())
                     .filter(u -> u.getRole() == UserRole.STUDENT)
-                    .ifPresent(otpService::generateAndSend);
+                    .orElseThrow(() -> new NoSuchElementException("No account found for this email"));
+            otpService.generateAndSend(user);
         }
         return new OtpSentResponse("If an account exists for that email, an OTP has been sent.");
     }
