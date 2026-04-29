@@ -18,12 +18,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.NoSuchElementException;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
+    private static final String NO_ACCOUNT_FOUND = "No account found for this email";
 
     private final UserRepository userRepository;
     private final VendorRepository vendorRepository;
@@ -95,7 +97,7 @@ public class AuthService {
     @Transactional
     public AuthResponse verifyOtp(VerifyOtpRequest request) {
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("No account found for this email"));
+                .orElseThrow(() -> new IllegalArgumentException(NO_ACCOUNT_FOUND));
 
         if (!otpService.verify(user, request.code())) {
             throw new IllegalArgumentException("Invalid or expired OTP");
@@ -166,15 +168,18 @@ public class AuthService {
     @Transactional
     public OtpSentResponse forgotPassword(ForgotPasswordRequest request) {
         if (request.role() == UserRole.VENDOR) {
-            vendorRepository.findByUserEmail(request.email()).ifPresent(vendor -> {
-                String code = otpService.generateCode();
-                vendor.setResetOtp(code);
-                vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
-                vendorRepository.save(vendor);
-                emailService.sendOtp(vendor.getUser().getEmail(), vendor.getUser().getName(), code);
-            });
+            Vendor vendor = vendorRepository.findByUserEmail(request.email())
+                    .orElseThrow(() -> new NoSuchElementException(NO_ACCOUNT_FOUND));
+            String code = otpService.generateCode();
+            vendor.setResetOtp(code);
+            vendor.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(10));
+            vendorRepository.save(vendor);
+            emailService.sendOtp(vendor.getUser().getEmail(), vendor.getUser().getName(), code);
         } else {
-            userRepository.findByEmail(request.email()).ifPresent(otpService::generateAndSend);
+            User user = userRepository.findByEmail(request.email())
+                    .filter(u -> u.getRole() == UserRole.STUDENT)
+                    .orElseThrow(() -> new NoSuchElementException(NO_ACCOUNT_FOUND));
+            otpService.generateAndSend(user);
         }
         return new OtpSentResponse("If an account exists for that email, an OTP has been sent.");
     }
@@ -197,6 +202,7 @@ public class AuthService {
             vendorRepository.save(vendor);
         } else {
             User user = userRepository.findByEmail(request.email())
+                    .filter(u -> u.getRole() == UserRole.STUDENT)
                     .orElseThrow(() -> new IllegalArgumentException("Invalid or expired OTP"));
 
             if (!otpService.verify(user, request.otp())) {
