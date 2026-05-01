@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public record MenuItemResponse(
         UUID id,
-        UUID categoryId,
+        String category,
         String name,
         String description,
         boolean isVeg,

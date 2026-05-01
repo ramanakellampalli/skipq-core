@@ -28,9 +28,8 @@ public class MenuItem {
     @JoinColumn(name = "vendor_id", nullable = false)
     private Vendor vendor;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private MenuCategory category;
+    @Column(name = "category", length = 100)
+    private String category;
 
     @Column(nullable = false, length = 100)
     private String name;

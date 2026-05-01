@@ -1,11 +1,9 @@
 package com.skipq.core.vendor;
 
 import com.skipq.core.auth.UserRepository;
-import com.skipq.core.menu.MenuCategoryRepository;
 import com.skipq.core.menu.MenuItem;
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.MenuItemService;
-import com.skipq.core.menu.dto.MenuCategoryResponse;
 import com.skipq.core.menu.dto.MenuItemResponse;
 import com.skipq.core.order.Order;
 import com.skipq.core.order.OrderItemRepository;
@@ -22,9 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,7 +30,6 @@ public class VendorService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final MenuItemRepository menuItemRepository;
-    private final MenuCategoryRepository categoryRepository;
     private final MenuItemService menuItemService;
     private final UserRepository userRepository;
     private final ServiceRequestService serviceRequestService;
@@ -90,27 +85,12 @@ public class VendorService {
                           || o.state().orderStatus() == com.skipq.core.common.OrderStatus.REJECTED)
                 .toList();
 
-        // Menu: all items with variants, grouped into categories + uncategorized
-        List<MenuItemResponse> allItems = menuItemRepository.findAllByVendorIdWithVariants(vendor.getId())
+        List<MenuItemResponse> items = menuItemRepository.findAllByVendorIdWithVariants(vendor.getId())
                 .stream().map(menuItemService::toItemResponse).toList();
-
-        List<MenuCategoryResponse> categories = categoryRepository.findAllByVendorIdOrdered(vendor.getId())
-                .stream().map(c -> {
-                    Set<UUID> categoryItemIds = c.getItems().stream()
-                            .map(MenuItem::getId).collect(Collectors.toSet());
-                    List<MenuItemResponse> items = allItems.stream()
-                            .filter(i -> categoryItemIds.contains(i.id()))
-                            .toList();
-                    return new MenuCategoryResponse(c.getId(), c.getName(), c.getDisplayOrder(), items);
-                }).toList();
-
-        List<MenuItemResponse> uncategorized = allItems.stream()
-                .filter(i -> i.categoryId() == null)
-                .toList();
 
         List<ServiceRequestResponse> serviceRequests = serviceRequestService.findByUser(userId);
 
-        return new VendorDashboardResponse(toResponse(vendor), activeOrders, pastOrders, categories, uncategorized, serviceRequests);
+        return new VendorDashboardResponse(toResponse(vendor), activeOrders, pastOrders, items, serviceRequests);
     }
 
     public List<VendorResponse> getOpenVendors() {
