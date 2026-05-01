@@ -18,38 +18,6 @@ public class MenuItemController {
 
     private final MenuItemService menuItemService;
 
-    // ── Categories (vendor) ───────────────────────────────────────────────────
-
-    @GetMapping("/api/v1/vendor/menu/categories")
-    @PreAuthorize("hasRole('VENDOR')")
-    public List<MenuCategoryResponse> getCategories(@AuthenticationPrincipal UserDetails userDetails) {
-        return menuItemService.getCategories(userId(userDetails));
-    }
-
-    @PostMapping("/api/v1/vendor/menu/categories")
-    @PreAuthorize("hasRole('VENDOR')")
-    @ResponseStatus(HttpStatus.CREATED)
-    public MenuCategoryResponse createCategory(@AuthenticationPrincipal UserDetails userDetails,
-                                               @Valid @RequestBody CreateMenuCategoryRequest request) {
-        return menuItemService.createCategory(userId(userDetails), request);
-    }
-
-    @PatchMapping("/api/v1/vendor/menu/categories/{categoryId}")
-    @PreAuthorize("hasRole('VENDOR')")
-    public MenuCategoryResponse updateCategory(@AuthenticationPrincipal UserDetails userDetails,
-                                               @PathVariable UUID categoryId,
-                                               @RequestBody UpdateMenuCategoryRequest request) {
-        return menuItemService.updateCategory(userId(userDetails), categoryId, request);
-    }
-
-    @DeleteMapping("/api/v1/vendor/menu/categories/{categoryId}")
-    @PreAuthorize("hasRole('VENDOR')")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteCategory(@AuthenticationPrincipal UserDetails userDetails,
-                                @PathVariable UUID categoryId) {
-        menuItemService.deleteCategory(userId(userDetails), categoryId);
-    }
-
     // ── Items (vendor) ────────────────────────────────────────────────────────
 
     @GetMapping("/api/v1/vendor/menu")

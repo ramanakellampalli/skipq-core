@@ -1,6 +1,6 @@
 package com.skipq.core.config;
 
-import com.skipq.core.menu.MenuCategoryRepository;
+import com.skipq.core.menu.MenuItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -51,14 +51,15 @@ public class VendorImageService {
             Map.entry("samosa", "snacks")
     );
 
-    private final MenuCategoryRepository categoryRepository;
+    private final MenuItemRepository menuItemRepository;
     private final R2ImageService r2ImageService;
 
     public List<String> getImagesForVendor(UUID vendorId) {
-        List<String> categoryNames = categoryRepository
-                .findAllByVendorIdOrdered(vendorId)
+        List<String> categoryNames = menuItemRepository.findAllByVendorIdWithVariants(vendorId)
                 .stream()
-                .map(c -> c.getName().toLowerCase())
+                .map(item -> item.getCategory() != null ? item.getCategory().toLowerCase() : "")
+                .filter(s -> !s.isEmpty())
+                .distinct()
                 .toList();
 
         List<String> tags = resolveTags(categoryNames);
