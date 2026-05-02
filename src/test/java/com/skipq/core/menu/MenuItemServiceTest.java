@@ -28,6 +28,7 @@ class MenuItemServiceTest {
 
     @Mock MenuItemRepository menuItemRepository;
     @Mock VendorRepository vendorRepository;
+    @Mock com.skipq.core.order.OrderItemRepository orderItemRepository;
 
     @InjectMocks MenuItemService menuItemService;
 
@@ -282,10 +283,25 @@ class MenuItemServiceTest {
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
         MenuItem item = itemWithVariants(true, true);
         when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
+        when(orderItemRepository.existsByMenuItemId(item.getId())).thenReturn(false);
 
         menuItemService.deleteItem(userId, item.getId());
 
         verify(menuItemRepository).delete(item);
+    }
+
+    @Test
+    void deleteItem_throwsWhenOrderHistoryExists() {
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        MenuItem item = itemWithVariants(true, true);
+        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
+        when(orderItemRepository.existsByMenuItemId(item.getId())).thenReturn(true);
+
+        assertThatThrownBy(() -> menuItemService.deleteItem(userId, item.getId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("order history");
+
+        verify(menuItemRepository, never()).delete(any());
     }
 
     @Test
