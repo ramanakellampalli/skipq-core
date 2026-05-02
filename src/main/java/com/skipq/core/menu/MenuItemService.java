@@ -18,6 +18,7 @@ public class MenuItemService {
 
     private final MenuItemRepository menuItemRepository;
     private final VendorRepository vendorRepository;
+    private final com.skipq.core.order.OrderItemRepository orderItemRepository;
 
     // ── Items ─────────────────────────────────────────────────────────────────
 
@@ -108,6 +109,9 @@ public class MenuItemService {
         UUID vendorId = vendorId(userId);
         MenuItem item = menuItemRepository.findByIdAndVendorId(itemId, vendorId)
                 .orElseThrow(() -> new IllegalArgumentException("Menu item not found"));
+        if (orderItemRepository.existsByMenuItemId(itemId)) {
+            throw new IllegalStateException("Cannot delete an item that has order history. Mark it as unavailable instead.");
+        }
         menuItemRepository.delete(item);
     }
 
