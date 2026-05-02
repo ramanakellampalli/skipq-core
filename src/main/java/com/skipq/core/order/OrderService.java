@@ -67,7 +67,7 @@ public class OrderService {
                 throw new IllegalArgumentException("Menu item does not belong to this vendor");
             }
 
-            if (!menuItem.isAvailable() || !variant.isAvailable()) {
+            if (!menuItem.isAvailable()) {
                 throw new IllegalStateException("Item is not available: " + menuItem.getName());
             }
 

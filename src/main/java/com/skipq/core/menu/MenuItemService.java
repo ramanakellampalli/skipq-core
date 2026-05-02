@@ -121,7 +121,7 @@ public class MenuItemService {
     public MenuItemResponse toItemResponse(MenuItem item) {
         List<MenuVariantResponse> variants = item.getVariants().stream()
                 .map(this::toVariantResponse).toList();
-        boolean isAvailable = item.isAvailable() && variants.stream().anyMatch(MenuVariantResponse::isAvailable);
+        boolean isAvailable = item.isAvailable();
         return new MenuItemResponse(
                 item.getId(),
                 item.getCategory(),

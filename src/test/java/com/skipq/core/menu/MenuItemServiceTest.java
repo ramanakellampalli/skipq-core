@@ -294,10 +294,10 @@ class MenuItemServiceTest {
     }
 
     @Test
-    void toItemResponse_isAvailableFalseWhenNoAvailableVariants() {
+    void toItemResponse_isAvailableTrueEvenWhenVariantsUnavailable() {
         MenuItem item = itemWithVariants(true, false);
         MenuItemResponse response = menuItemService.toItemResponse(item);
-        assertThat(response.isAvailable()).isFalse();
+        assertThat(response.isAvailable()).isTrue();
     }
 
     @Test
@@ -324,6 +324,6 @@ class MenuItemServiceTest {
         MenuItemResponse response = menuItemService.toItemResponse(item);
 
         assertThat(response.category()).isNull();
-        assertThat(response.isAvailable()).isFalse(); // no variants → unavailable
+        assertThat(response.isAvailable()).isTrue(); // availability is item flag only
     }
 }
