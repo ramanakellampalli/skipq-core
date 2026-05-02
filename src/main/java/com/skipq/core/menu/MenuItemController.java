@@ -50,35 +50,6 @@ public class MenuItemController {
         menuItemService.deleteItem(userId(userDetails), itemId);
     }
 
-    // ── Variants (vendor) ─────────────────────────────────────────────────────
-
-    @PostMapping("/api/v1/vendor/menu/{itemId}/variants")
-    @PreAuthorize("hasRole('VENDOR')")
-    @ResponseStatus(HttpStatus.CREATED)
-    public MenuVariantResponse addVariant(@AuthenticationPrincipal UserDetails userDetails,
-                                          @PathVariable UUID itemId,
-                                          @Valid @RequestBody CreateMenuVariantRequest request) {
-        return menuItemService.addVariant(userId(userDetails), itemId, request);
-    }
-
-    @PatchMapping("/api/v1/vendor/menu/{itemId}/variants/{variantId}")
-    @PreAuthorize("hasRole('VENDOR')")
-    public MenuVariantResponse updateVariant(@AuthenticationPrincipal UserDetails userDetails,
-                                             @PathVariable UUID itemId,
-                                             @PathVariable UUID variantId,
-                                             @RequestBody UpdateMenuVariantRequest request) {
-        return menuItemService.updateVariant(userId(userDetails), itemId, variantId, request);
-    }
-
-    @DeleteMapping("/api/v1/vendor/menu/{itemId}/variants/{variantId}")
-    @PreAuthorize("hasRole('VENDOR')")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteVariant(@AuthenticationPrincipal UserDetails userDetails,
-                              @PathVariable UUID itemId,
-                              @PathVariable UUID variantId) {
-        menuItemService.deleteVariant(userId(userDetails), itemId, variantId);
-    }
-
     // ── Menu browse (student) ─────────────────────────────────────────────────
 
     @GetMapping("/api/v1/vendors/{vendorId}/menu")

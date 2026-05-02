@@ -27,7 +27,6 @@ import static org.mockito.Mockito.*;
 class MenuItemServiceTest {
 
     @Mock MenuItemRepository menuItemRepository;
-    @Mock MenuVariantRepository variantRepository;
     @Mock VendorRepository vendorRepository;
 
     @InjectMocks MenuItemService menuItemService;
@@ -186,7 +185,7 @@ class MenuItemServiceTest {
         when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
         when(menuItemRepository.save(item)).thenReturn(item);
 
-        UpdateMenuItemRequest req = new UpdateMenuItemRequest("New Name", null, null, null, "Snacks", null);
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest("New Name", null, null, null, "Snacks", null, null);
         MenuItemResponse result = menuItemService.updateItem(userId, item.getId(), req);
 
         assertThat(result.name()).isEqualTo("New Name");
@@ -201,10 +200,43 @@ class MenuItemServiceTest {
         when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
         when(menuItemRepository.save(item)).thenReturn(item);
 
-        UpdateMenuItemRequest req = new UpdateMenuItemRequest(null, null, null, false, null, null);
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest(null, null, null, false, null, null, null);
         menuItemService.updateItem(userId, item.getId(), req);
 
         assertThat(item.isAvailable()).isFalse();
+    }
+
+    @Test
+    void updateItem_replacesVariantsWhenProvided() {
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        MenuItem item = itemWithVariants(true, true);
+        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
+        when(menuItemRepository.save(item)).thenReturn(item);
+
+        CreateMenuVariantRequest v1 = new CreateMenuVariantRequest("Half", BigDecimal.valueOf(60), 0);
+        CreateMenuVariantRequest v2 = new CreateMenuVariantRequest("Full", BigDecimal.valueOf(100), 1);
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest(null, null, null, null, null, null, List.of(v1, v2));
+
+        menuItemService.updateItem(userId, item.getId(), req);
+
+        assertThat(item.getVariants()).hasSize(2);
+        assertThat(item.getVariants().get(0).getLabel()).isEqualTo("Half");
+        assertThat(item.getVariants().get(1).getLabel()).isEqualTo("Full");
+    }
+
+    @Test
+    void updateItem_keepsExistingVariantsWhenNotProvided() {
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        MenuItem item = itemWithVariants(true, true);
+        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
+        when(menuItemRepository.save(item)).thenReturn(item);
+
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest("Updated Name", null, null, null, null, null, null);
+        menuItemService.updateItem(userId, item.getId(), req);
+
+        // variants unchanged
+        assertThat(item.getVariants()).hasSize(1);
+        assertThat(item.getVariants().get(0).getLabel()).isEqualTo("Regular");
     }
 
     @Test
@@ -213,7 +245,7 @@ class MenuItemServiceTest {
         UUID itemId = UUID.randomUUID();
         when(menuItemRepository.findByIdAndVendorId(itemId, vendorId)).thenReturn(Optional.empty());
 
-        UpdateMenuItemRequest req = new UpdateMenuItemRequest("x", null, null, null, null, null);
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest("x", null, null, null, null, null, null);
         assertThatThrownBy(() -> menuItemService.updateItem(userId, itemId, req))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Menu item not found");
@@ -243,94 +275,6 @@ class MenuItemServiceTest {
                 .hasMessageContaining("Menu item not found");
 
         verify(menuItemRepository, never()).delete(any());
-    }
-
-    // ── addVariant ────────────────────────────────────────────────────────────
-
-    @Test
-    void addVariant_savesAndReturnsVariant() {
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
-        MenuItem item = itemWithVariants(true, true);
-        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
-
-        MenuVariant saved = MenuVariant.builder()
-                .id(UUID.randomUUID()).label("Half").price(BigDecimal.valueOf(60)).isAvailable(true).displayOrder(1).build();
-        when(variantRepository.save(any(MenuVariant.class))).thenReturn(saved);
-
-        CreateMenuVariantRequest req = new CreateMenuVariantRequest("Half", BigDecimal.valueOf(60), 1);
-        MenuVariantResponse result = menuItemService.addVariant(userId, item.getId(), req);
-
-        assertThat(result.label()).isEqualTo("Half");
-        assertThat(result.price()).isEqualByComparingTo("60");
-        verify(variantRepository).save(any(MenuVariant.class));
-    }
-
-    @Test
-    void addVariant_throwsWhenItemNotFound() {
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
-        UUID itemId = UUID.randomUUID();
-        when(menuItemRepository.findByIdAndVendorId(itemId, vendorId)).thenReturn(Optional.empty());
-
-        CreateMenuVariantRequest req = new CreateMenuVariantRequest(null, BigDecimal.valueOf(50), 0);
-        assertThatThrownBy(() -> menuItemService.addVariant(userId, itemId, req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Menu item not found");
-
-        verifyNoInteractions(variantRepository);
-    }
-
-    // ── updateVariant ─────────────────────────────────────────────────────────
-
-    @Test
-    void updateVariant_updatesLabelAndPrice() {
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
-        MenuItem item = itemWithVariants(true, true);
-        UUID variantId = UUID.randomUUID();
-        MenuVariant variant = MenuVariant.builder()
-                .id(variantId).label("Regular").price(BigDecimal.valueOf(80)).isAvailable(true).displayOrder(0).build();
-
-        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
-        when(variantRepository.findByIdAndVendorId(variantId, vendorId)).thenReturn(Optional.of(variant));
-        when(variantRepository.save(variant)).thenReturn(variant);
-
-        UpdateMenuVariantRequest req = new UpdateMenuVariantRequest("Large", BigDecimal.valueOf(100), null, null);
-        MenuVariantResponse result = menuItemService.updateVariant(userId, item.getId(), variantId, req);
-
-        assertThat(result.label()).isEqualTo("Large");
-        assertThat(result.price()).isEqualByComparingTo("100");
-    }
-
-    @Test
-    void updateVariant_throwsWhenVariantNotFound() {
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
-        MenuItem item = itemWithVariants(true, true);
-        UUID variantId = UUID.randomUUID();
-
-        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
-        when(variantRepository.findByIdAndVendorId(variantId, vendorId)).thenReturn(Optional.empty());
-
-        UpdateMenuVariantRequest req = new UpdateMenuVariantRequest("X", null, null, null);
-        assertThatThrownBy(() -> menuItemService.updateVariant(userId, item.getId(), variantId, req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Variant not found");
-    }
-
-    // ── deleteVariant ─────────────────────────────────────────────────────────
-
-    @Test
-    void deleteVariant_deletesWhenFound() {
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
-        MenuItem item = itemWithVariants(true, true);
-        UUID variantId = UUID.randomUUID();
-        MenuVariant variant = MenuVariant.builder()
-                .id(variantId).price(BigDecimal.valueOf(80)).isAvailable(true).displayOrder(0).build();
-
-        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
-        when(variantRepository.findByIdAndVendorId(variantId, vendorId)).thenReturn(Optional.of(variant));
-
-        menuItemService.deleteVariant(userId, item.getId(), variantId);
-
-        verify(variantRepository).delete(variant);
     }
 
     // ── toItemResponse — availability logic ───────────────────────────────────

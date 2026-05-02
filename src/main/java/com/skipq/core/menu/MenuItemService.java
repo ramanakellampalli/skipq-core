@@ -17,7 +17,6 @@ import java.util.UUID;
 public class MenuItemService {
 
     private final MenuItemRepository menuItemRepository;
-    private final MenuVariantRepository variantRepository;
     private final VendorRepository vendorRepository;
 
     // ── Items ─────────────────────────────────────────────────────────────────
@@ -83,6 +82,20 @@ public class MenuItemService {
         if (req.category() != null)     item.setCategory(req.category());
         if (req.displayOrder() != null) item.setDisplayOrder(req.displayOrder());
 
+        if (req.variants() != null) {
+            item.getVariants().clear();
+            for (CreateMenuVariantRequest vReq : req.variants()) {
+                MenuVariant variant = MenuVariant.builder()
+                        .menuItem(item)
+                        .label(vReq.label())
+                        .price(vReq.price())
+                        .isAvailable(true)
+                        .displayOrder(vReq.displayOrder())
+                        .build();
+                item.getVariants().add(variant);
+            }
+        }
+
         return toItemResponse(menuItemRepository.save(item));
     }
 
@@ -92,52 +105,6 @@ public class MenuItemService {
         MenuItem item = menuItemRepository.findByIdAndVendorId(itemId, vendorId)
                 .orElseThrow(() -> new IllegalArgumentException("Menu item not found"));
         menuItemRepository.delete(item);
-    }
-
-    // ── Variants ──────────────────────────────────────────────────────────────
-
-    @Transactional
-    public MenuVariantResponse addVariant(UUID userId, UUID itemId, CreateMenuVariantRequest req) {
-        UUID vendorId = vendorId(userId);
-        MenuItem item = menuItemRepository.findByIdAndVendorId(itemId, vendorId)
-                .orElseThrow(() -> new IllegalArgumentException("Menu item not found"));
-
-        MenuVariant variant = MenuVariant.builder()
-                .menuItem(item)
-                .label(req.label())
-                .price(req.price())
-                .isAvailable(true)
-                .displayOrder(req.displayOrder())
-                .build();
-
-        return toVariantResponse(variantRepository.save(variant));
-    }
-
-    @Transactional
-    public MenuVariantResponse updateVariant(UUID userId, UUID itemId, UUID variantId, UpdateMenuVariantRequest req) {
-        UUID vendorId = vendorId(userId);
-        menuItemRepository.findByIdAndVendorId(itemId, vendorId)
-                .orElseThrow(() -> new IllegalArgumentException("Menu item not found"));
-
-        MenuVariant variant = variantRepository.findByIdAndVendorId(variantId, vendorId)
-                .orElseThrow(() -> new IllegalArgumentException("Variant not found"));
-
-        if (req.label() != null)       variant.setLabel(req.label());
-        if (req.price() != null)       variant.setPrice(req.price());
-        if (req.isAvailable() != null) variant.setAvailable(req.isAvailable());
-        if (req.displayOrder() != null) variant.setDisplayOrder(req.displayOrder());
-
-        return toVariantResponse(variantRepository.save(variant));
-    }
-
-    @Transactional
-    public void deleteVariant(UUID userId, UUID itemId, UUID variantId) {
-        UUID vendorId = vendorId(userId);
-        menuItemRepository.findByIdAndVendorId(itemId, vendorId)
-                .orElseThrow(() -> new IllegalArgumentException("Menu item not found"));
-        MenuVariant variant = variantRepository.findByIdAndVendorId(variantId, vendorId)
-                .orElseThrow(() -> new IllegalArgumentException("Variant not found"));
-        variantRepository.delete(variant);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
