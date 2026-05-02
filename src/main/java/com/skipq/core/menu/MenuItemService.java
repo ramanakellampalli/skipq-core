@@ -50,23 +50,26 @@ public class MenuItemService {
                 .isVeg(req.isVeg())
                 .isAvailable(true)
                 .displayOrder(req.displayOrder())
-                .price(BigDecimal.ZERO)
+                .price(req.price())
                 .build();
 
         menuItemRepository.save(item);
 
-        for (CreateMenuVariantRequest vReq : req.variants()) {
-            MenuVariant variant = MenuVariant.builder()
-                    .menuItem(item)
-                    .label(vReq.label())
-                    .price(vReq.price())
-                    .isAvailable(true)
-                    .displayOrder(vReq.displayOrder())
-                    .build();
-            item.getVariants().add(variant);
+        if (req.variants() != null && !req.variants().isEmpty()) {
+            for (CreateMenuVariantRequest vReq : req.variants()) {
+                MenuVariant variant = MenuVariant.builder()
+                        .menuItem(item)
+                        .label(vReq.label())
+                        .price(vReq.price())
+                        .isAvailable(true)
+                        .displayOrder(vReq.displayOrder())
+                        .build();
+                item.getVariants().add(variant);
+            }
+            return toItemResponse(menuItemRepository.save(item));
         }
 
-        return toItemResponse(menuItemRepository.save(item));
+        return toItemResponse(item);
     }
 
     @Transactional
@@ -81,6 +84,7 @@ public class MenuItemService {
         if (req.isAvailable() != null)  item.setAvailable(req.isAvailable());
         if (req.category() != null)     item.setCategory(req.category());
         if (req.displayOrder() != null) item.setDisplayOrder(req.displayOrder());
+        if (req.price() != null)        item.setPrice(req.price());
 
         if (req.variants() != null) {
             item.getVariants().clear();
@@ -130,6 +134,7 @@ public class MenuItemService {
                 item.isVeg(),
                 isAvailable,
                 item.getDisplayOrder(),
+                item.getPrice(),
                 variants
         );
     }

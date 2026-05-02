@@ -58,10 +58,8 @@ public class OrderService {
         });
 
         List<OrderItem> orderItems = request.items().stream().map(itemReq -> {
-            MenuVariant variant = menuVariantRepository.findById(itemReq.variantId())
-                    .orElseThrow(() -> new IllegalArgumentException("Variant not found: " + itemReq.variantId()));
-
-            MenuItem menuItem = variant.getMenuItem();
+            MenuItem menuItem = menuItemRepository.findById(itemReq.menuItemId())
+                    .orElseThrow(() -> new IllegalArgumentException("Menu item not found: " + itemReq.menuItemId()));
 
             if (!menuItem.getVendor().getId().equals(vendor.getId())) {
                 throw new IllegalArgumentException("Menu item does not belong to this vendor");
@@ -71,12 +69,23 @@ public class OrderService {
                 throw new IllegalStateException("Item is not available: " + menuItem.getName());
             }
 
+            MenuVariant variant = null;
+            java.math.BigDecimal unitPrice = menuItem.getPrice();
+            String variantLabel = null;
+
+            if (itemReq.variantId() != null) {
+                variant = menuVariantRepository.findById(itemReq.variantId())
+                        .orElseThrow(() -> new IllegalArgumentException("Variant not found: " + itemReq.variantId()));
+                unitPrice = variant.getPrice();
+                variantLabel = variant.getLabel();
+            }
+
             return OrderItem.builder()
                     .menuItem(menuItem)
                     .variant(variant)
-                    .variantLabel(variant.getLabel())
+                    .variantLabel(variantLabel)
                     .quantity(itemReq.quantity())
-                    .unitPrice(variant.getPrice())
+                    .unitPrice(unitPrice)
                     .build();
         }).toList();
 

@@ -1,5 +1,6 @@
 package com.skipq.core.menu.dto;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,5 +12,6 @@ public record MenuItemResponse(
         boolean isVeg,
         boolean isAvailable,
         int displayOrder,
+        BigDecimal price,
         List<MenuVariantResponse> variants
 ) {}

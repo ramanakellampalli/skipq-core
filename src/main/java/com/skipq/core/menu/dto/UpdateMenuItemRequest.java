@@ -1,5 +1,6 @@
 package com.skipq.core.menu.dto;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public record UpdateMenuItemRequest(
@@ -9,5 +10,6 @@ public record UpdateMenuItemRequest(
         Boolean isAvailable,
         String category,
         Integer displayOrder,
+        BigDecimal price,
         List<CreateMenuVariantRequest> variants
 ) {}
