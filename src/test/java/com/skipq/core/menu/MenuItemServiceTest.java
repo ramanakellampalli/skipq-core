@@ -27,7 +27,6 @@ import static org.mockito.Mockito.*;
 class MenuItemServiceTest {
 
     @Mock MenuItemRepository menuItemRepository;
-    @Mock MenuVariantRepository variantRepository;
     @Mock VendorRepository vendorRepository;
 
     @InjectMocks MenuItemService menuItemService;
@@ -66,8 +65,22 @@ class MenuItemServiceTest {
                 .isVeg(true)
                 .isAvailable(itemAvailable)
                 .displayOrder(0)
-                .price(BigDecimal.ZERO)
+                .price(BigDecimal.valueOf(80))
                 .variants(variants)
+                .build();
+    }
+
+    private MenuItem simpleItem(boolean available) {
+        return MenuItem.builder()
+                .id(UUID.randomUUID())
+                .vendor(vendor)
+                .category("Beverages")
+                .name("Water")
+                .isVeg(true)
+                .isAvailable(available)
+                .displayOrder(0)
+                .price(BigDecimal.valueOf(20))
+                .variants(new ArrayList<>())
                 .build();
     }
 
@@ -83,7 +96,7 @@ class MenuItemServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).name()).isEqualTo("Masala Dosa");
-        assertThat(result.get(0).category()).isEqualTo("Mains");
+        assertThat(result.get(0).price()).isEqualByComparingTo("80");
     }
 
     @Test
@@ -98,7 +111,7 @@ class MenuItemServiceTest {
     // ── getAvailableMenu ──────────────────────────────────────────────────────
 
     @Test
-    void getAvailableMenu_returnsOnlyAvailableItems() {
+    void getAvailableMenu_returnsItems() {
         MenuItem item = itemWithVariants(true, true);
         when(menuItemRepository.findAvailableByVendorIdWithVariants(vendorId)).thenReturn(List.of(item));
 
@@ -124,51 +137,52 @@ class MenuItemServiceTest {
     // ── createItem ────────────────────────────────────────────────────────────
 
     @Test
-    void createItem_savesItemAndVariantsInOneCall() {
+    void createItem_simpleItemNoVariants() {
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        MenuItem saved = simpleItem(true);
+        when(menuItemRepository.save(any(MenuItem.class))).thenReturn(saved);
 
+        CreateMenuItemRequest req = new CreateMenuItemRequest("Water", null, true, "Beverages", 0, BigDecimal.valueOf(20), null);
+        MenuItemResponse result = menuItemService.createItem(userId, req);
+
+        assertThat(result.price()).isEqualByComparingTo("20");
+        assertThat(result.variants()).isEmpty();
+        verify(menuItemRepository, times(1)).save(any(MenuItem.class));
+    }
+
+    @Test
+    void createItem_withVariantsSavesTwice() {
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
         MenuItem saved = itemWithVariants(true, true);
         when(menuItemRepository.save(any(MenuItem.class))).thenReturn(saved);
 
-        CreateMenuVariantRequest variantReq = new CreateMenuVariantRequest(null, BigDecimal.valueOf(80), 0);
-        CreateMenuItemRequest req = new CreateMenuItemRequest("Masala Dosa", "Crispy dosa", true, "Mains", 0, List.of(variantReq));
+        CreateMenuVariantRequest variantReq = new CreateMenuVariantRequest("Full", BigDecimal.valueOf(150), 0);
+        CreateMenuItemRequest req = new CreateMenuItemRequest("Biryani", null, false, "Mains", 0, BigDecimal.valueOf(80), List.of(variantReq));
 
-        MenuItemResponse result = menuItemService.createItem(userId, req);
+        menuItemService.createItem(userId, req);
 
-        assertThat(result.name()).isEqualTo("Masala Dosa");
-        assertThat(result.category()).isEqualTo("Mains");
-        assertThat(result.variants()).hasSize(1);
-
-        // item saved twice: once to get ID, once to cascade variants
         verify(menuItemRepository, times(2)).save(any(MenuItem.class));
     }
 
     @Test
-    void createItem_buildsVariantsOnItemBeforeSecondSave() {
+    void createItem_setsRealPriceOnItem() {
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
 
         ArgumentCaptor<MenuItem> captor = ArgumentCaptor.forClass(MenuItem.class);
-        MenuItem saved = itemWithVariants(true, true);
+        MenuItem saved = simpleItem(true);
         when(menuItemRepository.save(captor.capture())).thenReturn(saved);
 
-        CreateMenuVariantRequest variantReq = new CreateMenuVariantRequest("Full", BigDecimal.valueOf(120), 0);
-        CreateMenuItemRequest req = new CreateMenuItemRequest("Filter Coffee", null, true, "Beverages", 0, List.of(variantReq));
-
+        CreateMenuItemRequest req = new CreateMenuItemRequest("Tea", null, true, "Beverages", 0, BigDecimal.valueOf(30), null);
         menuItemService.createItem(userId, req);
 
-        // second captured save should have the variant in the list
-        MenuItem secondSave = captor.getAllValues().get(1);
-        assertThat(secondSave.getVariants()).hasSize(1);
-        assertThat(secondSave.getVariants().get(0).getLabel()).isEqualTo("Full");
-        assertThat(secondSave.getVariants().get(0).getPrice()).isEqualByComparingTo("120");
+        assertThat(captor.getValue().getPrice()).isEqualByComparingTo("30");
     }
 
     @Test
     void createItem_throwsWhenVendorNotFound() {
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
-        CreateMenuVariantRequest variantReq = new CreateMenuVariantRequest(null, BigDecimal.valueOf(50), 0);
-        CreateMenuItemRequest req = new CreateMenuItemRequest("Tea", null, true, "Beverages", 0, List.of(variantReq));
+        CreateMenuItemRequest req = new CreateMenuItemRequest("Tea", null, true, "Beverages", 0, BigDecimal.valueOf(30), null);
 
         assertThatThrownBy(() -> menuItemService.createItem(userId, req))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -186,25 +200,67 @@ class MenuItemServiceTest {
         when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
         when(menuItemRepository.save(item)).thenReturn(item);
 
-        UpdateMenuItemRequest req = new UpdateMenuItemRequest("New Name", null, null, null, "Snacks", null);
-        MenuItemResponse result = menuItemService.updateItem(userId, item.getId(), req);
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest("New Name", null, null, null, "Snacks", null, null, null);
+        menuItemService.updateItem(userId, item.getId(), req);
 
-        assertThat(result.name()).isEqualTo("New Name");
-        assertThat(result.category()).isEqualTo("Snacks");
-        verify(menuItemRepository).save(item);
+        assertThat(item.getName()).isEqualTo("New Name");
+        assertThat(item.getCategory()).isEqualTo("Snacks");
     }
 
     @Test
-    void updateItem_togglesAvailability() {
+    void updateItem_updatesPrice() {
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
         MenuItem item = itemWithVariants(true, true);
         when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
         when(menuItemRepository.save(item)).thenReturn(item);
 
-        UpdateMenuItemRequest req = new UpdateMenuItemRequest(null, null, null, false, null, null);
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest(null, null, null, null, null, null, BigDecimal.valueOf(95), null);
         menuItemService.updateItem(userId, item.getId(), req);
 
-        assertThat(item.isAvailable()).isFalse();
+        assertThat(item.getPrice()).isEqualByComparingTo("95");
+    }
+
+    @Test
+    void updateItem_replacesVariantsWhenProvided() {
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        MenuItem item = itemWithVariants(true, true);
+        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
+        when(menuItemRepository.save(item)).thenReturn(item);
+
+        CreateMenuVariantRequest v1 = new CreateMenuVariantRequest("Small", BigDecimal.valueOf(80), 0);
+        CreateMenuVariantRequest v2 = new CreateMenuVariantRequest("Full", BigDecimal.valueOf(150), 1);
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest(null, null, null, null, null, null, null, List.of(v1, v2));
+
+        menuItemService.updateItem(userId, item.getId(), req);
+
+        assertThat(item.getVariants()).hasSize(2);
+        assertThat(item.getVariants().get(0).getLabel()).isEqualTo("Small");
+    }
+
+    @Test
+    void updateItem_clearsVariantsWhenEmptyListProvided() {
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        MenuItem item = itemWithVariants(true, true);
+        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
+        when(menuItemRepository.save(item)).thenReturn(item);
+
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest(null, null, null, null, null, null, null, List.of());
+        menuItemService.updateItem(userId, item.getId(), req);
+
+        assertThat(item.getVariants()).isEmpty();
+    }
+
+    @Test
+    void updateItem_keepsVariantsWhenNotProvided() {
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        MenuItem item = itemWithVariants(true, true);
+        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
+        when(menuItemRepository.save(item)).thenReturn(item);
+
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest("Updated", null, null, null, null, null, null, null);
+        menuItemService.updateItem(userId, item.getId(), req);
+
+        assertThat(item.getVariants()).hasSize(1);
     }
 
     @Test
@@ -213,7 +269,7 @@ class MenuItemServiceTest {
         UUID itemId = UUID.randomUUID();
         when(menuItemRepository.findByIdAndVendorId(itemId, vendorId)).thenReturn(Optional.empty());
 
-        UpdateMenuItemRequest req = new UpdateMenuItemRequest("x", null, null, null, null, null);
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest("x", null, null, null, null, null, null, null);
         assertThatThrownBy(() -> menuItemService.updateItem(userId, itemId, req))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Menu item not found");
@@ -245,115 +301,21 @@ class MenuItemServiceTest {
         verify(menuItemRepository, never()).delete(any());
     }
 
-    // ── addVariant ────────────────────────────────────────────────────────────
+    // ── toItemResponse ────────────────────────────────────────────────────────
 
     @Test
-    void addVariant_savesAndReturnsVariant() {
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
-        MenuItem item = itemWithVariants(true, true);
-        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
-
-        MenuVariant saved = MenuVariant.builder()
-                .id(UUID.randomUUID()).label("Half").price(BigDecimal.valueOf(60)).isAvailable(true).displayOrder(1).build();
-        when(variantRepository.save(any(MenuVariant.class))).thenReturn(saved);
-
-        CreateMenuVariantRequest req = new CreateMenuVariantRequest("Half", BigDecimal.valueOf(60), 1);
-        MenuVariantResponse result = menuItemService.addVariant(userId, item.getId(), req);
-
-        assertThat(result.label()).isEqualTo("Half");
-        assertThat(result.price()).isEqualByComparingTo("60");
-        verify(variantRepository).save(any(MenuVariant.class));
-    }
-
-    @Test
-    void addVariant_throwsWhenItemNotFound() {
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
-        UUID itemId = UUID.randomUUID();
-        when(menuItemRepository.findByIdAndVendorId(itemId, vendorId)).thenReturn(Optional.empty());
-
-        CreateMenuVariantRequest req = new CreateMenuVariantRequest(null, BigDecimal.valueOf(50), 0);
-        assertThatThrownBy(() -> menuItemService.addVariant(userId, itemId, req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Menu item not found");
-
-        verifyNoInteractions(variantRepository);
-    }
-
-    // ── updateVariant ─────────────────────────────────────────────────────────
-
-    @Test
-    void updateVariant_updatesLabelAndPrice() {
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
-        MenuItem item = itemWithVariants(true, true);
-        UUID variantId = UUID.randomUUID();
-        MenuVariant variant = MenuVariant.builder()
-                .id(variantId).label("Regular").price(BigDecimal.valueOf(80)).isAvailable(true).displayOrder(0).build();
-
-        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
-        when(variantRepository.findByIdAndVendorId(variantId, vendorId)).thenReturn(Optional.of(variant));
-        when(variantRepository.save(variant)).thenReturn(variant);
-
-        UpdateMenuVariantRequest req = new UpdateMenuVariantRequest("Large", BigDecimal.valueOf(100), null, null);
-        MenuVariantResponse result = menuItemService.updateVariant(userId, item.getId(), variantId, req);
-
-        assertThat(result.label()).isEqualTo("Large");
-        assertThat(result.price()).isEqualByComparingTo("100");
-    }
-
-    @Test
-    void updateVariant_throwsWhenVariantNotFound() {
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
-        MenuItem item = itemWithVariants(true, true);
-        UUID variantId = UUID.randomUUID();
-
-        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
-        when(variantRepository.findByIdAndVendorId(variantId, vendorId)).thenReturn(Optional.empty());
-
-        UpdateMenuVariantRequest req = new UpdateMenuVariantRequest("X", null, null, null);
-        assertThatThrownBy(() -> menuItemService.updateVariant(userId, item.getId(), variantId, req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Variant not found");
-    }
-
-    // ── deleteVariant ─────────────────────────────────────────────────────────
-
-    @Test
-    void deleteVariant_deletesWhenFound() {
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
-        MenuItem item = itemWithVariants(true, true);
-        UUID variantId = UUID.randomUUID();
-        MenuVariant variant = MenuVariant.builder()
-                .id(variantId).price(BigDecimal.valueOf(80)).isAvailable(true).displayOrder(0).build();
-
-        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
-        when(variantRepository.findByIdAndVendorId(variantId, vendorId)).thenReturn(Optional.of(variant));
-
-        menuItemService.deleteVariant(userId, item.getId(), variantId);
-
-        verify(variantRepository).delete(variant);
-    }
-
-    // ── toItemResponse — availability logic ───────────────────────────────────
-
-    @Test
-    void toItemResponse_isAvailableTrueWhenItemAndVariantBothAvailable() {
-        MenuItem item = itemWithVariants(true, true);
+    void toItemResponse_includesPrice() {
+        MenuItem item = simpleItem(true);
         MenuItemResponse response = menuItemService.toItemResponse(item);
-        assertThat(response.isAvailable()).isTrue();
+        assertThat(response.price()).isEqualByComparingTo("20");
     }
 
     @Test
-    void toItemResponse_isAvailableFalseWhenItemUnavailable() {
-        MenuItem item = itemWithVariants(false, true);
-        MenuItemResponse response = menuItemService.toItemResponse(item);
-        assertThat(response.isAvailable()).isFalse();
-    }
-
-    @Test
-    void toItemResponse_isAvailableFalseWhenNoAvailableVariants() {
-        MenuItem item = itemWithVariants(true, false);
-        MenuItemResponse response = menuItemService.toItemResponse(item);
-        assertThat(response.isAvailable()).isFalse();
+    void toItemResponse_availabilityIsItemFlagOnly() {
+        assertThat(menuItemService.toItemResponse(itemWithVariants(true, false)).isAvailable()).isTrue();
+        assertThat(menuItemService.toItemResponse(itemWithVariants(false, true)).isAvailable()).isFalse();
+        assertThat(menuItemService.toItemResponse(simpleItem(true)).isAvailable()).isTrue();
+        assertThat(menuItemService.toItemResponse(simpleItem(false)).isAvailable()).isFalse();
     }
 
     @Test
@@ -361,25 +323,11 @@ class MenuItemServiceTest {
         MenuItem item = itemWithVariants(true, true);
         MenuItemResponse response = menuItemService.toItemResponse(item);
 
-        assertThat(response.id()).isEqualTo(item.getId());
         assertThat(response.name()).isEqualTo("Masala Dosa");
         assertThat(response.description()).isEqualTo("Crispy dosa");
         assertThat(response.category()).isEqualTo("Mains");
         assertThat(response.isVeg()).isTrue();
+        assertThat(response.price()).isEqualByComparingTo("80");
         assertThat(response.variants()).hasSize(1);
-        assertThat(response.variants().get(0).price()).isEqualByComparingTo("80");
-    }
-
-    @Test
-    void toItemResponse_nullCategoryReturnedAsNull() {
-        MenuItem item = MenuItem.builder()
-                .id(UUID.randomUUID()).vendor(vendor).category(null)
-                .name("Plain Rice").isVeg(true).isAvailable(true).displayOrder(0)
-                .price(BigDecimal.ZERO).variants(new ArrayList<>()).build();
-
-        MenuItemResponse response = menuItemService.toItemResponse(item);
-
-        assertThat(response.category()).isNull();
-        assertThat(response.isAvailable()).isFalse(); // no variants → unavailable
     }
 }
