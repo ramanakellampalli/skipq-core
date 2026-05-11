@@ -2,8 +2,8 @@ package com.skipq.core.student;
 
 import com.skipq.core.student.dto.StudentMenuResponse;
 import com.skipq.core.order.OrderService;
-import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.order.dto.PlaceOrderRequest;
+import com.skipq.core.order.dto.PlaceOrderResponse;
 import com.skipq.core.student.dto.StudentSyncResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,8 +35,8 @@ public class StudentController {
     }
 
     @PostMapping("/orders")
-    public OrderResponse placeOrder(@AuthenticationPrincipal UserDetails userDetails,
-                                    @Valid @RequestBody PlaceOrderRequest request) {
+    public PlaceOrderResponse placeOrder(@AuthenticationPrincipal UserDetails userDetails,
+                                         @Valid @RequestBody PlaceOrderRequest request) {
         return orderService.placeOrder(userId(userDetails), request);
     }
 

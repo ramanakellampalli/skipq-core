@@ -69,6 +69,9 @@ public class Order {
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
+    @Column(name = "razorpay_order_id", length = 64, unique = true)
+    private String razorpayOrderId;
+
     @Column(name = "estimated_ready_at")
     private LocalDateTime estimatedReadyAt;
 

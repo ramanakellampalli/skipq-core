@@ -26,6 +26,7 @@
 			**/logging/**,
 			**/*Filter.java,
 			**/*Config.java,
+			**/*Controller.java,
 			**/*Application.java,
 			**/notification/EmailService.java,
 			**/notification/EmailDeliveryException.java

@@ -2,6 +2,7 @@ package com.skipq.core.webhook;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.skipq.core.order.OrderService;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.HexFormat;
 public class RazorpayWebhookService {
 
     private final VendorRepository vendorRepository;
+    private final OrderService orderService;
     private final ObjectMapper objectMapper;
 
     @Value("${app.razorpay.webhook-secret}")
@@ -36,6 +38,8 @@ public class RazorpayWebhookService {
             log.info("Razorpay webhook received: {}", event);
 
             switch (event) {
+                case "payment.captured"  -> handlePaymentCaptured(root);
+                case "payment.failed"    -> handlePaymentFailed(root);
                 case "account.activated" -> handleAccountActivated(root);
                 case "account.rejected"  -> handleAccountRejected(root);
                 default -> log.debug("Unhandled Razorpay webhook event: {}", event);
@@ -46,6 +50,32 @@ public class RazorpayWebhookService {
         }
     }
 
+    private void handlePaymentCaptured(JsonNode root) {
+        JsonNode entity = root.path("payload").path("payment").path("entity");
+        String razorpayOrderId   = entity.path("order_id").asText();
+        String razorpayPaymentId = entity.path("id").asText();
+
+        if (razorpayOrderId.isBlank() || razorpayPaymentId.isBlank()) {
+            log.warn("payment.captured webhook missing order_id or payment id");
+            return;
+        }
+
+        orderService.confirmPayment(razorpayOrderId, razorpayPaymentId);
+        log.info("Payment confirmed: razorpay_order={} payment={}", razorpayOrderId, razorpayPaymentId);
+    }
+
+    private void handlePaymentFailed(JsonNode root) {
+        String razorpayOrderId = root.path("payload").path("payment").path("entity").path("order_id").asText();
+
+        if (razorpayOrderId.isBlank()) {
+            log.warn("payment.failed webhook missing order_id");
+            return;
+        }
+
+        orderService.handlePaymentFailed(razorpayOrderId);
+        log.info("Payment failed, order draft deleted: razorpay_order={}", razorpayOrderId);
+    }
+
     private void handleAccountActivated(JsonNode root) {
         String linkedAccountId = root.path("payload").path("account").path("entity").path("id").asText();
 
@@ -54,9 +84,7 @@ public class RazorpayWebhookService {
             return;
         }
 
-        Vendor vendor = vendorRepository.findByRazorpayLinkedAccountId(linkedAccountId)
-                .orElse(null);
-
+        Vendor vendor = vendorRepository.findByRazorpayLinkedAccountId(linkedAccountId).orElse(null);
         if (vendor == null) {
             log.warn("account.activated: no vendor found for linked account {}", linkedAccountId);
             return;
@@ -76,8 +104,6 @@ public class RazorpayWebhookService {
         }
 
         log.warn("KYC rejected by Razorpay for linked account {} — manual follow-up needed", linkedAccountId);
-        // kycApproved stays false — vendor sees Pending status
-        // Future: send email notification to vendor
     }
 
     private void verifySignature(String payload, String signature) {
