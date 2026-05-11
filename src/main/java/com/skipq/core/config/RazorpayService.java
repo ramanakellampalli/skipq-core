@@ -4,10 +4,12 @@ import com.razorpay.Account;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class RazorpayService {
 
@@ -22,6 +24,24 @@ public class RazorpayService {
     @PostConstruct
     public void init() throws RazorpayException {
         client = new RazorpayClient(keyId, keySecret);
+    }
+
+    public String createOrder(long amountPaise, String receiptId) throws RazorpayException {
+        JSONObject options = new JSONObject();
+        options.put("amount", amountPaise);
+        options.put("currency", "INR");
+        options.put("receipt", receiptId);
+        options.put("payment_capture", 1);
+        com.razorpay.Order order = client.orders.create(options);
+        log.info("Razorpay order created: {} receipt={}", order.get("id"), receiptId);
+        return order.get("id");
+    }
+
+    public void refund(String razorpayPaymentId, long amountPaise) throws RazorpayException {
+        JSONObject options = new JSONObject();
+        options.put("amount", amountPaise);
+        client.payments.refund(razorpayPaymentId, options);
+        log.info("Razorpay refund initiated for payment {}", razorpayPaymentId);
     }
 
     public String createLinkedAccount(String businessName, String pan,

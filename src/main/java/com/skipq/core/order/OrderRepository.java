@@ -7,19 +7,59 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 
 public interface OrderRepository extends JpaRepository<Order, UUID> {
+
+    @Query("""
+        SELECT DISTINCT o FROM Order o
+        JOIN FETCH o.vendor
+        JOIN FETCH o.items i
+        JOIN FETCH i.menuItem
+        LEFT JOIN FETCH i.variant
+        WHERE o.id = :orderId
+        """)
+    Optional<Order> findByIdWithItems(@Param("orderId") UUID orderId);
+
+    @Query("""
+        SELECT DISTINCT o FROM Order o
+        JOIN FETCH o.vendor
+        JOIN FETCH o.items i
+        JOIN FETCH i.menuItem
+        LEFT JOIN FETCH i.variant
+        WHERE o.razorpayOrderId = :razorpayOrderId
+        """)
+    Optional<Order> findByRazorpayOrderIdWithItems(@Param("razorpayOrderId") String razorpayOrderId);
+
+    @Query("""
+        SELECT DISTINCT o FROM Order o
+        JOIN FETCH o.vendor
+        JOIN FETCH o.items i
+        JOIN FETCH i.menuItem
+        LEFT JOIN FETCH i.variant
+        WHERE o.user.id = :userId
+        ORDER BY o.createdAt DESC
+        """)
+    List<Order> findAllByUserIdWithItems(@Param("userId") UUID userId);
+
+    @Query("""
+        SELECT DISTINCT o FROM Order o
+        JOIN FETCH o.vendor v
+        JOIN FETCH o.items i
+        JOIN FETCH i.menuItem
+        LEFT JOIN FETCH i.variant
+        WHERE v.user.id = :userId
+        ORDER BY o.createdAt DESC
+        """)
+    List<Order> findAllByVendorUserIdWithItems(@Param("userId") UUID userId);
 
     List<Order> findAllByUserId(UUID userId);
 
     List<Order> findAllByVendorId(UUID vendorId);
 
     List<Order> findAllByVendorIdAndStatus(UUID vendorId, OrderStatus status);
-
-    @Query("SELECT DISTINCT o FROM Order o JOIN FETCH o.vendor v JOIN FETCH o.items i JOIN FETCH i.menuItem WHERE v.user.id = :userId ORDER BY o.createdAt DESC")
-    List<Order> findAllByVendorUserIdWithItems(@Param("userId") UUID userId);
 
     @Query("""
         SELECT
@@ -31,9 +71,13 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         """)
     OrderStatsProjection getTodayStats();
 
-    @Query("SELECT DISTINCT o FROM Order o JOIN FETCH o.vendor JOIN FETCH o.items i JOIN FETCH i.menuItem ORDER BY o.createdAt DESC")
+    @Query("""
+        SELECT DISTINCT o FROM Order o
+        JOIN FETCH o.vendor
+        JOIN FETCH o.items i
+        JOIN FETCH i.menuItem
+        LEFT JOIN FETCH i.variant
+        ORDER BY o.createdAt DESC
+        """)
     List<Order> findAllWithItems();
-
-    @Query("SELECT DISTINCT o FROM Order o JOIN FETCH o.vendor JOIN FETCH o.items i JOIN FETCH i.menuItem WHERE o.user.id = :userId ORDER BY o.createdAt DESC")
-    List<Order> findAllByUserIdWithItems(@Param("userId") UUID userId);
 }

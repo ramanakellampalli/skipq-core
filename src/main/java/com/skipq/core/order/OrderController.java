@@ -2,6 +2,7 @@ package com.skipq.core.order;
 
 import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.order.dto.PlaceOrderRequest;
+import com.skipq.core.order.dto.PlaceOrderResponse;
 import com.skipq.core.order.dto.UpdateOrderStatusRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +24,18 @@ public class OrderController {
     @PostMapping("/api/v1/orders")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
-    public OrderResponse placeOrder(
+    public PlaceOrderResponse placeOrder(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody PlaceOrderRequest request) {
         return orderService.placeOrder(userId(userDetails), request);
+    }
+
+    @PostMapping("/api/v1/orders/{orderId}/cancel")
+    @PreAuthorize("hasRole('STUDENT')")
+    public void cancelOrder(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID orderId) {
+        orderService.cancelOrder(userId(userDetails), orderId);
     }
 
     @GetMapping("/api/v1/orders")
