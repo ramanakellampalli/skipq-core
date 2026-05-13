@@ -247,6 +247,9 @@ public class OrderService {
         }
 
         order.setStatus(newStatus);
+        if (newStatus == OrderStatus.REJECTED) {
+            fireRefund(order);
+        }
         orderRepository.save(order);
 
         if (newStatus == OrderStatus.READY) {
@@ -282,6 +285,22 @@ public class OrderService {
         } catch (RazorpayException e) {
             log.error("Razorpay transfer failed for order {} — funds remain in SkipQ account: {}",
                     order.getId(), e.getMessage());
+        }
+    }
+
+    private void fireRefund(Order order) {
+        String paymentRef = order.getPaymentRef();
+        if (paymentRef == null) {
+            log.warn("Skipping refund for rejected order {} — paymentRef is null", order.getId());
+            return;
+        }
+        long amountPaise = order.getTotalAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        try {
+            razorpayService.refund(paymentRef, amountPaise);
+            order.setPaymentStatus(PaymentStatus.REFUNDED);
+            log.info("Refund initiated for rejected order {}", order.getId());
+        } catch (RazorpayException e) {
+            log.error("Refund failed for rejected order {} — manual intervention needed: {}", order.getId(), e.getMessage());
         }
     }
 
