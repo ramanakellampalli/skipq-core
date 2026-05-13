@@ -528,4 +528,50 @@ class OrderServiceTest {
         assertThat(order.getStatus()).isEqualTo(OrderStatus.READY);
         verify(orderRepository).save(order);
     }
+
+    @Test
+    void updateStatus_toRejected_firesRefund() throws Exception {
+        Order order = buildOrder(OrderStatus.PENDING, PaymentStatus.PAID);
+        order.setPaymentRef("pay_rej123");
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        when(orderRepository.findByIdWithItems(order.getId())).thenReturn(Optional.of(order));
+
+        orderService.updateStatus(userId, order.getId(), OrderStatus.REJECTED);
+
+        // totalAmount is 103 → 10300 paise
+        verify(razorpayService).refund("pay_rej123", 10300L);
+        assertThat(order.getPaymentStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.REJECTED);
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void updateStatus_toRejected_noPaymentRef_skipsRefund() throws Exception {
+        Order order = buildOrder(OrderStatus.PENDING, PaymentStatus.PAID);
+        // paymentRef is null — order was never paid (edge case)
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        when(orderRepository.findByIdWithItems(order.getId())).thenReturn(Optional.of(order));
+
+        orderService.updateStatus(userId, order.getId(), OrderStatus.REJECTED);
+
+        verifyNoInteractions(razorpayService);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.REJECTED);
+    }
+
+    @Test
+    void updateStatus_toRejected_refundFails_statusStillRejected() throws Exception {
+        Order order = buildOrder(OrderStatus.PENDING, PaymentStatus.PAID);
+        order.setPaymentRef("pay_rej999");
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        when(orderRepository.findByIdWithItems(order.getId())).thenReturn(Optional.of(order));
+        doThrow(new RazorpayException("refund error"))
+                .when(razorpayService).refund(anyString(), anyLong());
+
+        // Refund failure must NOT propagate — rejection goes through, payment status stays PAID
+        orderService.updateStatus(userId, order.getId(), OrderStatus.REJECTED);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.REJECTED);
+        assertThat(order.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        verify(orderRepository).save(order);
+    }
 }
