@@ -44,6 +44,18 @@ public class RazorpayService {
         log.info("Razorpay refund initiated for payment {}", razorpayPaymentId);
     }
 
+    public void transferToVendor(String razorpayPaymentId,
+                                  RazorpayTransferRequest request) throws RazorpayException {
+        JSONObject options = new JSONObject();
+        options.put("account",  request.linkedAccountId());
+        options.put("amount",   request.amountPaise());
+        options.put("currency", "INR");
+        options.put("on_hold",  0);
+        client.payments.transfer(razorpayPaymentId, options);
+        log.info("Razorpay transfer initiated: payment={} account={} amount={}",
+                razorpayPaymentId, request.linkedAccountId(), request.amountPaise());
+    }
+
     public String createLinkedAccount(String businessName, String pan,
                                       String bankAccount, String ifsc) throws RazorpayException {
         JSONObject request = new JSONObject();
