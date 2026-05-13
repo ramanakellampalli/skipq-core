@@ -3,9 +3,11 @@ package com.skipq.core.order;
 import com.skipq.core.common.OrderStatus;
 import com.skipq.core.order.dto.OrderStatsProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -80,4 +82,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         ORDER BY o.createdAt DESC
         """)
     List<Order> findAllWithItems();
+
+    @Modifying
+    @Query("DELETE FROM Order o WHERE o.status = com.skipq.core.common.OrderStatus.AWAITING_PAYMENT AND o.createdAt < :cutoff")
+    int deleteStaleAwaitingPaymentOrders(@Param("cutoff") LocalDateTime cutoff);
 }
