@@ -156,17 +156,17 @@ class RazorpayWebhookServiceTest {
         verifyNoInteractions(orderService);
     }
 
-    // ── account.activated ─────────────────────────────────────────────────────
+    // ── account.instantly_activated ───────────────────────────────────────────
 
     @Test
-    void handle_accountActivated_setsKycApprovedOnVendor() throws Exception {
+    void handle_accountInstantlyActivated_setsKycApprovedOnVendor() throws Exception {
         String linkedId = "acc_linked123";
         Vendor vendor = Vendor.builder().id(UUID.randomUUID()).name("Stall").kycApproved(false).build();
         when(vendorRepository.findByRazorpayLinkedAccountId(linkedId)).thenReturn(Optional.of(vendor));
 
         String payload = """
                 {
-                  "event": "account.activated",
+                  "event": "account.instantly_activated",
                   "payload": {
                     "account": {
                       "entity": {
@@ -183,12 +183,12 @@ class RazorpayWebhookServiceTest {
     }
 
     @Test
-    void handle_accountActivated_vendorNotFound_noSave() throws Exception {
+    void handle_accountInstantlyActivated_vendorNotFound_noSave() throws Exception {
         when(vendorRepository.findByRazorpayLinkedAccountId(anyString())).thenReturn(Optional.empty());
 
         String payload = """
                 {
-                  "event": "account.activated",
+                  "event": "account.instantly_activated",
                   "payload": {
                     "account": {
                       "entity": {
@@ -204,10 +204,10 @@ class RazorpayWebhookServiceTest {
     }
 
     @Test
-    void handle_accountActivated_missingId_noLookup() throws Exception {
+    void handle_accountInstantlyActivated_missingId_noLookup() throws Exception {
         String payload = """
                 {
-                  "event": "account.activated",
+                  "event": "account.instantly_activated",
                   "payload": {
                     "account": {
                       "entity": {
@@ -222,13 +222,13 @@ class RazorpayWebhookServiceTest {
         verifyNoInteractions(vendorRepository);
     }
 
-    // ── account.rejected ──────────────────────────────────────────────────────
+    // ── account.activated_kyc_pending ─────────────────────────────────────────
 
     @Test
-    void handle_accountRejected_logsWarning() throws Exception {
+    void handle_accountActivatedKycPending_noServiceInteraction() throws Exception {
         String payload = """
                 {
-                  "event": "account.rejected",
+                  "event": "account.activated_kyc_pending",
                   "payload": {
                     "account": {
                       "entity": {
@@ -238,21 +238,24 @@ class RazorpayWebhookServiceTest {
                   }
                 }""";
 
-        // just verifying it doesn't throw and doesn't touch any service
         webhookService.handle(payload, sign(payload));
 
         verifyNoInteractions(orderService, vendorRepository);
     }
 
+    // ── refund.processed ──────────────────────────────────────────────────────
+
     @Test
-    void handle_accountRejected_missingId_noOp() throws Exception {
+    void handle_refundProcessed_noServiceInteraction() throws Exception {
         String payload = """
                 {
-                  "event": "account.rejected",
+                  "event": "refund.processed",
                   "payload": {
-                    "account": {
+                    "refund": {
                       "entity": {
-                        "id": ""
+                        "id": "rfnd_abc123",
+                        "payment_id": "pay_xyz789",
+                        "amount": 10300
                       }
                     }
                   }
