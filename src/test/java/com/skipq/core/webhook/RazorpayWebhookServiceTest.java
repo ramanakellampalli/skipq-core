@@ -266,6 +266,29 @@ class RazorpayWebhookServiceTest {
         verifyNoInteractions(orderService, vendorRepository);
     }
 
+    // ── refund.failed ─────────────────────────────────────────────────────────
+
+    @Test
+    void handle_refundFailed_noServiceInteraction() throws Exception {
+        String payload = """
+                {
+                  "event": "refund.failed",
+                  "payload": {
+                    "refund": {
+                      "entity": {
+                        "id": "rfnd_fail123",
+                        "payment_id": "pay_xyz789",
+                        "amount": 10300
+                      }
+                    }
+                  }
+                }""";
+
+        webhookService.handle(payload, sign(payload));
+
+        verifyNoInteractions(orderService, vendorRepository);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private String sign(String payload) throws Exception {

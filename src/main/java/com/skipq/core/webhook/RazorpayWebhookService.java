@@ -43,6 +43,7 @@ public class RazorpayWebhookService {
                 case "account.instantly_activated"   -> handleAccountInstantlyActivated(root);
                 case "account.activated_kyc_pending" -> handleAccountActivatedKycPending(root);
                 case "refund.processed"              -> handleRefundProcessed(root);
+                case "refund.failed"                 -> handleRefundFailed(root);
                 default -> log.debug("Unhandled Razorpay webhook event: {}", event);
             }
         } catch (Exception e) {
@@ -105,10 +106,18 @@ public class RazorpayWebhookService {
 
     private void handleRefundProcessed(JsonNode root) {
         JsonNode entity = root.path("payload").path("refund").path("entity");
-        String refundId   = entity.path("id").asText();
-        String paymentId  = entity.path("payment_id").asText();
-        long   amount     = entity.path("amount").asLong();
+        String refundId  = entity.path("id").asText();
+        String paymentId = entity.path("payment_id").asText();
+        long   amount    = entity.path("amount").asLong();
         log.info("Refund processed: refund_id={} payment_id={} amount_paise={}", refundId, paymentId, amount);
+    }
+
+    private void handleRefundFailed(JsonNode root) {
+        JsonNode entity = root.path("payload").path("refund").path("entity");
+        String refundId  = entity.path("id").asText();
+        String paymentId = entity.path("payment_id").asText();
+        long   amount    = entity.path("amount").asLong();
+        log.error("REFUND FAILED — manual intervention required: refund_id={} payment_id={} amount_paise={}", refundId, paymentId, amount);
     }
 
     private void verifySignature(String payload, String signature) {
