@@ -63,7 +63,7 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Vendor is currently closed");
         }
 
-        if (user.getCampus() != null && !user.getCampus().getId().equals(vendor.getCampus().getId())) {
+        if (user.getCampus() != null && vendor.getCampus() != null && !user.getCampus().getId().equals(vendor.getCampus().getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This vendor does not serve your campus");
         }
 
@@ -115,23 +115,13 @@ public class OrderService {
         BigDecimal totalAmount = subtotal.add(taxAmount).add(platformFee);
         long amountPaise       = totalAmount.multiply(BigDecimal.valueOf(100)).longValue();
 
-        // Generate ID upfront so it can serve as the Razorpay receipt before persisting.
-        // If Razorpay throws, nothing has been saved — the transaction rolls back cleanly.
-        UUID orderId = UUID.randomUUID();
-        String razorpayOrderId;
-        try {
-            razorpayOrderId = razorpayService.createOrder(amountPaise, orderId.toString());
-        } catch (RazorpayException e) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Payment service unavailable. Please try again.");
-        }
-
+        // Persist the order first so JPA assigns the UUID via @GeneratedValue.
+        // If Razorpay fails after save, @Transactional rolls the insert back automatically.
         Order order = Order.builder()
-                .id(orderId)
                 .user(user)
                 .vendor(vendor)
                 .status(OrderStatus.AWAITING_PAYMENT)
                 .paymentStatus(PaymentStatus.PENDING)
-                .razorpayOrderId(razorpayOrderId)
                 .subtotal(subtotal)
                 .cgst(cgst)
                 .sgst(sgst)
@@ -147,9 +137,18 @@ public class OrderService {
         orderItems.forEach(item -> item.setOrder(order));
         orderItemRepository.saveAll(orderItems);
 
+        String razorpayOrderId;
+        try {
+            razorpayOrderId = razorpayService.createOrder(amountPaise, order.getId().toString());
+        } catch (RazorpayException e) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Payment service unavailable. Please try again.");
+        }
+
+        order.setRazorpayOrderId(razorpayOrderId);
+
         // Ably is NOT published here. Vendor sees the order only after
         // payment.captured webhook confirms the payment.
-        return new PlaceOrderResponse(orderId, razorpayOrderId, amountPaise, razorpayKeyId);
+        return new PlaceOrderResponse(order.getId(), razorpayOrderId, amountPaise, razorpayKeyId);
     }
 
     @Transactional
