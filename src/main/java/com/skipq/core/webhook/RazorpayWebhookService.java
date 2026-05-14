@@ -38,10 +38,12 @@ public class RazorpayWebhookService {
             log.info("Razorpay webhook received: {}", event);
 
             switch (event) {
-                case "payment.captured"  -> handlePaymentCaptured(root);
-                case "payment.failed"    -> handlePaymentFailed(root);
-                case "account.activated" -> handleAccountActivated(root);
-                case "account.rejected"  -> handleAccountRejected(root);
+                case "payment.captured"              -> handlePaymentCaptured(root);
+                case "payment.failed"                -> handlePaymentFailed(root);
+                case "account.instantly_activated"   -> handleAccountInstantlyActivated(root);
+                case "account.activated_kyc_pending" -> handleAccountActivatedKycPending(root);
+                case "refund.processed"              -> handleRefundProcessed(root);
+                case "refund.failed"                 -> handleRefundFailed(root);
                 default -> log.debug("Unhandled Razorpay webhook event: {}", event);
             }
         } catch (Exception e) {
@@ -76,34 +78,46 @@ public class RazorpayWebhookService {
         log.info("Payment failed, order draft deleted: razorpay_order={}", razorpayOrderId);
     }
 
-    private void handleAccountActivated(JsonNode root) {
+    private void handleAccountInstantlyActivated(JsonNode root) {
         String linkedAccountId = root.path("payload").path("account").path("entity").path("id").asText();
 
         if (linkedAccountId.isBlank()) {
-            log.warn("account.activated webhook missing account id");
+            log.warn("account.instantly_activated webhook missing account id");
             return;
         }
 
         Vendor vendor = vendorRepository.findByRazorpayLinkedAccountId(linkedAccountId).orElse(null);
         if (vendor == null) {
-            log.warn("account.activated: no vendor found for linked account {}", linkedAccountId);
+            log.warn("account.instantly_activated: no vendor found for linked account {}", linkedAccountId);
             return;
         }
 
         vendor.setKycApproved(true);
         vendorRepository.save(vendor);
-        log.info("KYC approved for vendor {} (linked account {})", vendor.getId(), linkedAccountId);
+        log.info("KYC fully approved for vendor {} (linked account {})", vendor.getId(), linkedAccountId);
     }
 
-    private void handleAccountRejected(JsonNode root) {
+    private void handleAccountActivatedKycPending(JsonNode root) {
         String linkedAccountId = root.path("payload").path("account").path("entity").path("id").asText();
+        // Account is live and can receive transfers but KYC docs still under review.
+        // kycApproved stays false — vendor banner remains visible until instantly_activated fires.
+        log.info("account.activated_kyc_pending: linked account {} is live, KYC under review", linkedAccountId);
+    }
 
-        if (linkedAccountId.isBlank()) {
-            log.warn("account.rejected webhook missing account id");
-            return;
-        }
+    private void handleRefundProcessed(JsonNode root) {
+        JsonNode entity = root.path("payload").path("refund").path("entity");
+        String refundId  = entity.path("id").asText();
+        String paymentId = entity.path("payment_id").asText();
+        long   amount    = entity.path("amount").asLong();
+        log.info("Refund processed: refund_id={} payment_id={} amount_paise={}", refundId, paymentId, amount);
+    }
 
-        log.warn("KYC rejected by Razorpay for linked account {} — manual follow-up needed", linkedAccountId);
+    private void handleRefundFailed(JsonNode root) {
+        JsonNode entity = root.path("payload").path("refund").path("entity");
+        String refundId  = entity.path("id").asText();
+        String paymentId = entity.path("payment_id").asText();
+        long   amount    = entity.path("amount").asLong();
+        log.error("REFUND FAILED — manual intervention required: refund_id={} payment_id={} amount_paise={}", refundId, paymentId, amount);
     }
 
     private void verifySignature(String payload, String signature) {
