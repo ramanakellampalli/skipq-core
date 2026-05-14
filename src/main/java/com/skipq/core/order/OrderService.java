@@ -161,7 +161,9 @@ public class OrderService {
         order.setStatus(OrderStatus.PENDING);
         orderRepository.save(order);
 
-        ablyService.publish("vendor:" + order.getVendor().getId(), "order", toResponse(order, order.getItems()));
+        OrderResponse response = toResponse(order, order.getItems());
+        ablyService.publish("vendor:" + order.getVendor().getId(), "order", response);
+        ablyService.publish("order:" + order.getId(), "status", response);
     }
 
     @Transactional
