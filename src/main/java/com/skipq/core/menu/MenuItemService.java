@@ -65,7 +65,7 @@ public class MenuItemService {
                         .isAvailable(true)
                         .displayOrder(vReq.displayOrder())
                         .build();
-                item.getVariants().add(variant);
+                item.addVariant(variant);
             }
             return toItemResponse(menuItemRepository.save(item));
         }
@@ -88,7 +88,7 @@ public class MenuItemService {
         if (req.price() != null)        item.setPrice(req.price());
 
         if (req.variants() != null) {
-            item.getVariants().clear();
+            item.clearVariants();
             for (CreateMenuVariantRequest vReq : req.variants()) {
                 MenuVariant variant = MenuVariant.builder()
                         .menuItem(item)
@@ -97,7 +97,7 @@ public class MenuItemService {
                         .isAvailable(true)
                         .displayOrder(vReq.displayOrder())
                         .build();
-                item.getVariants().add(variant);
+                item.addVariant(variant);
             }
         }
 

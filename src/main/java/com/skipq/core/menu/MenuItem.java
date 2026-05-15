@@ -18,6 +18,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString(exclude = {"vendor", "variants"})
 public class MenuItem {
 
     @Id
@@ -53,7 +54,20 @@ public class MenuItem {
     @OneToMany(mappedBy = "menuItem", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("displayOrder ASC")
     @Builder.Default
+    @Getter(AccessLevel.NONE)
     private List<MenuVariant> variants = new ArrayList<>();
+
+    public List<MenuVariant> getVariants() {
+        return java.util.Collections.unmodifiableList(variants);
+    }
+
+    public void addVariant(MenuVariant variant) {
+        variants.add(variant);
+    }
+
+    public void clearVariants() {
+        variants.clear();
+    }
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
