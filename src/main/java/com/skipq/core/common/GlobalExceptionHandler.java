@@ -47,7 +47,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
-    public ErrorResponse handleAccessDenied(AccessDeniedException ex) {
+    public ErrorResponse handleAccessDenied(AccessDeniedException ignored) {
         return error(HttpStatus.FORBIDDEN, "Access denied");
     }
 
