@@ -54,7 +54,12 @@ public class MenuItem {
     @OneToMany(mappedBy = "menuItem", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("displayOrder ASC")
     @Builder.Default
+    @Getter(AccessLevel.NONE)
     private List<MenuVariant> variants = new ArrayList<>();
+
+    public List<MenuVariant> getVariants() {
+        return java.util.Collections.unmodifiableList(variants);
+    }
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
