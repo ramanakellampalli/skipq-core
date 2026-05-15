@@ -15,6 +15,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString(exclude = {"order", "menuItem", "variant"})
 public class OrderItem {
 
     @Id
