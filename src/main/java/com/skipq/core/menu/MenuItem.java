@@ -61,6 +61,14 @@ public class MenuItem {
         return java.util.Collections.unmodifiableList(variants);
     }
 
+    public void addVariant(MenuVariant variant) {
+        variants.add(variant);
+    }
+
+    public void clearVariants() {
+        variants.clear();
+    }
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
