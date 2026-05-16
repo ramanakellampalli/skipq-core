@@ -96,7 +96,8 @@ public class VendorService {
     }
 
     public List<VendorResponse> getOpenVendors() {
-        return vendorRepository.findAllByIsOpenTrue().stream().map(this::toResponse).toList();
+        return vendorRepository.findAllByIsOpenTrueAndAccountStatus(com.skipq.core.common.AccountStatus.ACTIVE)
+                .stream().map(this::toResponse).toList();
     }
 
     public List<VendorResponse> getAllVendors() {

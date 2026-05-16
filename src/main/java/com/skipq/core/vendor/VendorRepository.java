@@ -1,6 +1,7 @@
 package com.skipq.core.vendor;
 
 import com.skipq.core.campus.Campus;
+import com.skipq.core.common.AccountStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -9,7 +10,7 @@ import java.util.UUID;
 
 public interface VendorRepository extends JpaRepository<Vendor, UUID> {
 
-    List<Vendor> findAllByIsOpenTrue();
+    List<Vendor> findAllByIsOpenTrueAndAccountStatus(AccountStatus accountStatus);
 
     List<Vendor> findAllByOrderByIsOpenDesc();
 

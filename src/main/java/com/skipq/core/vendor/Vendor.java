@@ -2,6 +2,7 @@ package com.skipq.core.vendor;
 
 import com.skipq.core.auth.User;
 import com.skipq.core.campus.Campus;
+import com.skipq.core.common.AccountStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -64,6 +65,14 @@ public class Vendor {
 
     @Column(name = "kyc_approved", nullable = false)
     private boolean kycApproved = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_status", nullable = false, length = 20)
+    @Builder.Default
+    private AccountStatus accountStatus = AccountStatus.ACTIVE;
+
+    @Column(name = "suspension_note", columnDefinition = "TEXT")
+    private String suspensionNote;
 
     @Column(name = "reset_otp", length = 6)
     private String resetOtp;

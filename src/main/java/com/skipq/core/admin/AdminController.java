@@ -3,6 +3,7 @@ package com.skipq.core.admin;
 import com.skipq.core.admin.dto.AdminSyncResponse;
 import com.skipq.core.admin.dto.CreateCampusRequest;
 import com.skipq.core.admin.dto.CreateVendorRequest;
+import com.skipq.core.admin.dto.UpdateVendorStatusRequest;
 import com.skipq.core.campus.dto.CampusResponse;
 import com.skipq.core.config.R2ImageService;
 import com.skipq.core.support.ServiceRequestService;
@@ -48,6 +49,14 @@ public class AdminController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateServiceRequestRequest request) {
         return serviceRequestService.update(id, request);
+    }
+
+    @PutMapping("/vendors/{id}/status")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateVendorStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateVendorStatusRequest request) {
+        adminService.updateVendorStatus(id, request);
     }
 
     @PostMapping("/r2/refresh-cache")
