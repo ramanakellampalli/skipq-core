@@ -4,6 +4,8 @@ import com.skipq.core.auth.dto.ForgotPasswordRequest;
 import com.skipq.core.auth.dto.OtpSentResponse;
 import com.skipq.core.auth.dto.ResetPasswordRequest;
 import com.skipq.core.campus.CampusRepository;
+import com.skipq.core.auth.dto.LoginRequest;
+import com.skipq.core.common.AccountStatus;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.config.RazorpayService;
 import com.skipq.core.vendor.Vendor;
@@ -228,5 +230,36 @@ class AuthServiceTest {
                 .hasMessageContaining("Invalid or expired OTP");
 
         verify(passwordEncoder, never()).encode(any());
+    }
+
+    // --- login: vendor suspension ---
+
+    @Test
+    void login_vendor_throwsForbiddenWhenSuspended() {
+        var suspendedVendor = Vendor.builder()
+                .id(UUID.randomUUID())
+                .user(vendorUser)
+                .name("Test Stall")
+                .accountStatus(AccountStatus.SUSPENDED)
+                .suspensionNote("Repeated order rejections")
+                .build();
+
+        when(userRepository.findByEmail("vendor@campus.edu")).thenReturn(Optional.of(vendorUser));
+        when(vendorRepository.findByUserId(vendorUser.getId())).thenReturn(Optional.of(suspendedVendor));
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("vendor@campus.edu", "password")))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("Repeated order rejections");
+    }
+
+    @Test
+    void login_vendor_succeedsWhenActive() {
+        when(userRepository.findByEmail("vendor@campus.edu")).thenReturn(Optional.of(vendorUser));
+        when(vendorRepository.findByUserId(vendorUser.getId())).thenReturn(Optional.of(vendor));
+        when(jwtService.generateToken(vendorUser)).thenReturn("token");
+
+        var response = authService.login(new LoginRequest("vendor@campus.edu", "password"));
+
+        assertThat(response.token()).isEqualTo("token");
     }
 }
