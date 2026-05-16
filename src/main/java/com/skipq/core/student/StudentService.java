@@ -118,7 +118,7 @@ public class StudentService {
         var tax        = new OrderResponse.TaxBreakdown(order.getCgst(), order.getSgst(), order.getIgst(), order.getTaxAmount());
         var fees       = new OrderResponse.Fees(order.getPlatformFee(), order.getTotalServiceFee());
         var pricing    = new OrderResponse.Pricing(order.getSubtotal(), tax, fees, order.getTotalAmount());
-        var timeline   = new OrderResponse.Timeline(order.getCreatedAt(), order.getEstimatedReadyAt());
+        var timeline   = new OrderResponse.Timeline(order.getCreatedAt(), order.getEstimatedReadyAt(), order.getOrderType(), order.getScheduledPickupAt());
         return new OrderResponse(order.getId(), vendorInfo, state, pricing, timeline, items);
     }
 }

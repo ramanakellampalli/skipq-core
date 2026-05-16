@@ -2,6 +2,7 @@ package com.skipq.core.order;
 
 import com.skipq.core.auth.User;
 import com.skipq.core.common.OrderStatus;
+import com.skipq.core.common.OrderType;
 import com.skipq.core.common.PaymentStatus;
 import com.skipq.core.vendor.Vendor;
 import jakarta.persistence.*;
@@ -36,8 +37,16 @@ public class Order {
     private Vendor vendor;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "order_type", nullable = false, length = 20)
+    @Builder.Default
+    private OrderType orderType = OrderType.IMMEDIATE;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private OrderStatus status;
+
+    @Column(name = "scheduled_pickup_at")
+    private LocalDateTime scheduledPickupAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false, length = 20)

@@ -5,6 +5,7 @@ import com.skipq.core.auth.User;
 import com.skipq.core.auth.UserRepository;
 import com.skipq.core.campus.Campus;
 import com.skipq.core.common.OrderStatus;
+import com.skipq.core.common.OrderType;
 import com.skipq.core.common.PaymentStatus;
 import com.skipq.core.config.AblyService;
 import com.skipq.core.config.FcmService;
@@ -63,6 +64,9 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(orderService, "razorpayKeyId", "rzp_test_key");
+        ReflectionTestUtils.setField(orderService, "schedulingWindowStart", "10:00");
+        ReflectionTestUtils.setField(orderService, "schedulingWindowEnd", "17:00");
+        ReflectionTestUtils.setField(orderService, "minLeadMinutes", 30);
 
         userId   = UUID.randomUUID();
         vendorId = UUID.randomUUID();
@@ -133,7 +137,7 @@ class OrderServiceTest {
         });
         when(razorpayService.createOrder(anyLong(), anyString())).thenReturn("order_rzp123");
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
         PlaceOrderResponse response = orderService.placeOrder(userId, request);
 
         assertThat(response.razorpayOrderId()).isEqualTo("order_rzp123");
@@ -159,7 +163,7 @@ class OrderServiceTest {
         });
         when(razorpayService.createOrder(anyLong(), anyString())).thenReturn("order_rzp456");
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), v.getId(), 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), v.getId(), 1)), null);
         PlaceOrderResponse response = orderService.placeOrder(userId, request);
 
         // ₹150 variant, 3% platform fee = ₹4.50, total ₹154.50 → 15450 paise
@@ -180,7 +184,7 @@ class OrderServiceTest {
         });
         when(razorpayService.createOrder(anyLong(), anyString())).thenReturn("order_rzp123");
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
         orderService.placeOrder(userId, request);
 
         // razorpayOrderId is set on the managed entity after save — verify status/payment at save time
@@ -204,7 +208,7 @@ class OrderServiceTest {
         });
         when(razorpayService.createOrder(anyLong(), anyString())).thenThrow(new RazorpayException("network error"));
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
@@ -217,7 +221,7 @@ class OrderServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
@@ -233,7 +237,7 @@ class OrderServiceTest {
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
         when(menuItemRepository.findById(itemId)).thenReturn(Optional.empty());
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(itemId, null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(itemId, null, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
@@ -247,7 +251,7 @@ class OrderServiceTest {
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
         when(menuItemRepository.findById(item.getId())).thenReturn(Optional.of(item));
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
@@ -263,7 +267,7 @@ class OrderServiceTest {
         when(menuItemRepository.findById(item.getId())).thenReturn(Optional.of(item));
         when(menuVariantRepository.findById(badVariantId)).thenReturn(Optional.empty());
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), badVariantId, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), badVariantId, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
@@ -282,7 +286,7 @@ class OrderServiceTest {
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
         when(menuItemRepository.findById(item.getId())).thenReturn(Optional.of(item));
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
@@ -294,7 +298,7 @@ class OrderServiceTest {
         when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
@@ -591,5 +595,137 @@ class OrderServiceTest {
         assertThat(order.getStatus()).isEqualTo(OrderStatus.REJECTED);
         assertThat(order.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
         verify(orderRepository).save(order);
+    }
+
+    // ── scheduled orders — placeOrder ─────────────────────────────────────────
+
+    private Order buildScheduledOrder(LocalDateTime pickupAt) {
+        Order order = buildOrder(OrderStatus.SCHEDULED, PaymentStatus.PAID);
+        order.setOrderType(OrderType.SCHEDULED);
+        order.setScheduledPickupAt(pickupAt);
+        order.setPaymentRef("pay_sched123");
+        return order;
+    }
+
+    @Test
+    void placeOrder_validScheduled_setsScheduledTypeAndPickupAt() throws Exception {
+        LocalDateTime pickup = LocalDateTime.now().plusDays(1).withHour(12).withMinute(0).withSecond(0).withNano(0);
+        MenuItem item = menuItem(true);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(menuItemRepository.findById(item.getId())).thenReturn(Optional.of(item));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order o = inv.getArgument(0);
+            o.setId(UUID.randomUUID());
+            return o;
+        });
+        when(razorpayService.createOrder(anyLong(), anyString())).thenReturn("order_rzp_sched");
+
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), pickup);
+        orderService.placeOrder(userId, request);
+
+        verify(orderRepository).save(argThat(o ->
+                o.getOrderType() == OrderType.SCHEDULED &&
+                pickup.equals(o.getScheduledPickupAt())));
+    }
+
+    @Test
+    void placeOrder_scheduledBeforeWindowStart_throwsBadRequest() {
+        // 9 AM is before the 10 AM window start
+        LocalDateTime beforeWindow = LocalDateTime.now().plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)), beforeWindow);
+        assertThatThrownBy(() -> orderService.placeOrder(userId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verifyNoInteractions(razorpayService, orderRepository);
+    }
+
+    @Test
+    void placeOrder_scheduledAfterWindowEnd_throwsBadRequest() {
+        // 6 PM is after the 5 PM window end
+        LocalDateTime afterWindow = LocalDateTime.now().plusDays(1).withHour(18).withMinute(0).withSecond(0).withNano(0);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)), afterWindow);
+        assertThatThrownBy(() -> orderService.placeOrder(userId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verifyNoInteractions(razorpayService, orderRepository);
+    }
+
+    @Test
+    void placeOrder_scheduledTooSoon_throwsBadRequest() {
+        // Widen the window so only the lead-time check can fail
+        ReflectionTestUtils.setField(orderService, "schedulingWindowStart", "00:00");
+        ReflectionTestUtils.setField(orderService, "schedulingWindowEnd", "23:59");
+
+        LocalDateTime tooSoon = LocalDateTime.now().plusMinutes(10);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)), tooSoon);
+        assertThatThrownBy(() -> orderService.placeOrder(userId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verifyNoInteractions(razorpayService, orderRepository);
+    }
+
+    // ── scheduled orders — confirmPayment ─────────────────────────────────────
+
+    @Test
+    void confirmPayment_scheduledOrder_staysScheduledAndNotifiesCustomerOnly() {
+        LocalDateTime pickup = LocalDateTime.now().plusHours(3);
+        Order order = buildScheduledOrder(pickup);
+        order.setStatus(OrderStatus.AWAITING_PAYMENT);
+        when(orderRepository.findByRazorpayOrderIdWithItems("order_sched")).thenReturn(Optional.of(order));
+
+        orderService.confirmPayment("order_sched", "pay_sched456");
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.SCHEDULED);
+        assertThat(order.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        // Customer channel gets update, vendor channel must NOT
+        verify(ablyService).publish(eq("order:" + order.getId()), eq("status"), any());
+        verify(ablyService, never()).publish(eq("vendor:" + vendorId), any(), any());
+    }
+
+    // ── scheduled orders — dispatchScheduledOrder ─────────────────────────────
+
+    @Test
+    void dispatchScheduledOrder_transitionsToPendingAndPublishesToBothChannels() {
+        Order order = buildScheduledOrder(LocalDateTime.now().plusMinutes(14));
+
+        orderService.dispatchScheduledOrder(order);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING);
+        verify(orderRepository).save(order);
+        verify(ablyService).publish(eq("vendor:" + vendorId), eq("order"), any());
+        verify(ablyService).publish(eq("order:" + order.getId()), eq("status"), any());
+    }
+
+    // ── scheduled orders — cancelOrder ────────────────────────────────────────
+
+    @Test
+    void cancelOrder_whileScheduled_refundsAndCancels() throws Exception {
+        Order order = buildScheduledOrder(LocalDateTime.now().plusHours(2));
+        when(orderRepository.findByIdWithItems(order.getId())).thenReturn(Optional.of(order));
+
+        orderService.cancelOrder(userId, order.getId());
+
+        verify(razorpayService).refund(eq("pay_sched123"), anyLong());
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(order.getPaymentStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        verify(orderRepository).save(order);
+        verify(ablyService).publish(eq("order:" + order.getId()), eq("status"), any());
     }
 }

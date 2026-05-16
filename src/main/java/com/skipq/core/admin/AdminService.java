@@ -142,7 +142,7 @@ public class AdminService {
                     var tax        = new OrderResponse.TaxBreakdown(o.getCgst(), o.getSgst(), o.getIgst(), o.getTaxAmount());
                     var fees       = new OrderResponse.Fees(o.getPlatformFee(), o.getTotalServiceFee());
                     var pricing    = new OrderResponse.Pricing(o.getSubtotal(), tax, fees, o.getTotalAmount());
-                    var timeline   = new OrderResponse.Timeline(o.getCreatedAt(), o.getEstimatedReadyAt());
+                    var timeline   = new OrderResponse.Timeline(o.getCreatedAt(), o.getEstimatedReadyAt(), o.getOrderType(), o.getScheduledPickupAt());
                     return new OrderResponse(o.getId(), vendorInfo, state, pricing, timeline, items);
                 }).toList();
 

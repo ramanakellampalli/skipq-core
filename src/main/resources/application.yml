@@ -40,6 +40,13 @@ app:
   deep-link:
     base-url: ${DEEP_LINK_BASE_URL}
 
+scheduling:
+  window:
+    start: "10:00"
+    end: "17:00"
+  min-lead-minutes: 30
+  dispatch-buffer-minutes: 15
+
 server:
   port: 8080
 

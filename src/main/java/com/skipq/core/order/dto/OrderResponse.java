@@ -1,6 +1,7 @@
 package com.skipq.core.order.dto;
 
 import com.skipq.core.common.OrderStatus;
+import com.skipq.core.common.OrderType;
 import com.skipq.core.common.PaymentStatus;
 
 import java.math.BigDecimal;
@@ -39,5 +40,5 @@ public record OrderResponse(
             BigDecimal totalServiceFee
     ) {}
 
-    public record Timeline(LocalDateTime createdAt, LocalDateTime estimatedReadyAt) {}
+    public record Timeline(LocalDateTime createdAt, LocalDateTime estimatedReadyAt, OrderType orderType, LocalDateTime scheduledPickupAt) {}
 }

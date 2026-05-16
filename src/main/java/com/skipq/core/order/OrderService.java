@@ -4,6 +4,7 @@ import com.razorpay.RazorpayException;
 import com.skipq.core.auth.User;
 import com.skipq.core.auth.UserRepository;
 import com.skipq.core.common.OrderStatus;
+import com.skipq.core.common.OrderType;
 import com.skipq.core.common.PaymentStatus;
 import com.skipq.core.config.AblyService;
 import com.skipq.core.config.FcmService;
@@ -27,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,6 +39,11 @@ public class OrderService {
 
     private static final BigDecimal GST_RATE      = new BigDecimal("0.025");
     private static final BigDecimal PLATFORM_RATE = new BigDecimal("0.03");
+
+    private static final String CH_VENDOR  = "vendor:";
+    private static final String CH_ORDER   = "order:";
+    private static final String EVT_ORDER  = "order";
+    private static final String EVT_STATUS = "status";
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
@@ -50,6 +57,15 @@ public class OrderService {
 
     @Value("${app.razorpay.key-id}")
     private String razorpayKeyId;
+
+    @Value("${scheduling.window.start:10:00}")
+    private String schedulingWindowStart;
+
+    @Value("${scheduling.window.end:17:00}")
+    private String schedulingWindowEnd;
+
+    @Value("${scheduling.min-lead-minutes:30}")
+    private int minLeadMinutes;
 
     @Transactional
     public PlaceOrderResponse placeOrder(UUID userId, PlaceOrderRequest request) {
@@ -72,6 +88,14 @@ public class OrderService {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot place an order at your own store");
             }
         });
+
+        LocalDateTime scheduledPickupAt = request.scheduledPickupAt();
+        OrderType orderType = OrderType.IMMEDIATE;
+
+        if (scheduledPickupAt != null) {
+            validateScheduledPickup(scheduledPickupAt);
+            orderType = OrderType.SCHEDULED;
+        }
 
         List<OrderItem> orderItems = request.items().stream().map(itemReq -> {
             MenuItem menuItem = menuItemRepository.findById(itemReq.menuItemId())
@@ -120,6 +144,8 @@ public class OrderService {
         Order order = Order.builder()
                 .user(user)
                 .vendor(vendor)
+                .orderType(orderType)
+                .scheduledPickupAt(scheduledPickupAt)
                 .status(OrderStatus.AWAITING_PAYMENT)
                 .paymentStatus(PaymentStatus.PENDING)
                 .subtotal(subtotal)
@@ -158,12 +184,28 @@ public class OrderService {
 
         order.setPaymentRef(razorpayPaymentId);
         order.setPaymentStatus(PaymentStatus.PAID);
+
+        if (order.getOrderType() == OrderType.SCHEDULED) {
+            order.setStatus(OrderStatus.SCHEDULED);
+            orderRepository.save(order);
+            // Notify customer only — vendor does not see this until dispatch
+            ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, toResponse(order, order.getItems()));
+        } else {
+            order.setStatus(OrderStatus.PENDING);
+            orderRepository.save(order);
+            OrderResponse response = toResponse(order, order.getItems());
+            ablyService.publish(CH_VENDOR + order.getVendor().getId(), EVT_ORDER, response);
+            ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, response);
+        }
+    }
+
+    @Transactional
+    public void dispatchScheduledOrder(Order order) {
         order.setStatus(OrderStatus.PENDING);
         orderRepository.save(order);
-
         OrderResponse response = toResponse(order, order.getItems());
-        ablyService.publish("vendor:" + order.getVendor().getId(), "order", response);
-        ablyService.publish("order:" + order.getId(), "status", response);
+        ablyService.publish(CH_VENDOR + order.getVendor().getId(), EVT_ORDER, response);
+        ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, response);
     }
 
     @Transactional
@@ -190,7 +232,7 @@ public class OrderService {
             return;
         }
 
-        if (order.getStatus() != OrderStatus.PENDING) {
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.SCHEDULED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Order cannot be cancelled at this stage");
         }
 
@@ -205,7 +247,7 @@ public class OrderService {
         order.setPaymentStatus(PaymentStatus.REFUNDED);
         orderRepository.save(order);
 
-        ablyService.publish("order:" + order.getId(), "status", toResponse(order, order.getItems()));
+        ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, toResponse(order, order.getItems()));
         fcmService.sendToUser(order.getUser(), "Order cancelled", "Your order has been cancelled. Full refund initiated.");
     }
 
@@ -258,11 +300,26 @@ public class OrderService {
         }
 
         OrderResponse response = toResponse(order, order.getItems());
-        ablyService.publish("vendor:" + vendor.getId(), "order", response);
-        ablyService.publish("order:" + order.getId(), "status", response);
+        ablyService.publish(CH_VENDOR + vendor.getId(), EVT_ORDER, response);
+        ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, response);
         fcmService.sendToUser(order.getUser(), notificationTitle(newStatus), notificationBody(newStatus, vendor.getName()));
 
         return response;
+    }
+
+    private void validateScheduledPickup(LocalDateTime scheduledPickupAt) {
+        LocalTime windowStart = LocalTime.parse(schedulingWindowStart);
+        LocalTime windowEnd   = LocalTime.parse(schedulingWindowEnd);
+        LocalTime pickupTime  = scheduledPickupAt.toLocalTime();
+
+        if (pickupTime.isBefore(windowStart) || pickupTime.isAfter(windowEnd)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Scheduled pickup must be between " + schedulingWindowStart + " and " + schedulingWindowEnd);
+        }
+        if (scheduledPickupAt.isBefore(LocalDateTime.now().plusMinutes(minLeadMinutes))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Scheduled pickup must be at least " + minLeadMinutes + " minutes from now");
+        }
     }
 
     private void fireVendorTransfer(Order order) {
@@ -345,7 +402,7 @@ public class OrderService {
         var tax        = new OrderResponse.TaxBreakdown(order.getCgst(), order.getSgst(), order.getIgst(), order.getTaxAmount());
         var fees       = new OrderResponse.Fees(order.getPlatformFee(), order.getTotalServiceFee());
         var pricing    = new OrderResponse.Pricing(order.getSubtotal(), tax, fees, order.getTotalAmount());
-        var timeline   = new OrderResponse.Timeline(order.getCreatedAt(), order.getEstimatedReadyAt());
+        var timeline   = new OrderResponse.Timeline(order.getCreatedAt(), order.getEstimatedReadyAt(), order.getOrderType(), order.getScheduledPickupAt());
 
         return new OrderResponse(order.getId(), vendorInfo, state, pricing, timeline, itemResponses);
     }
