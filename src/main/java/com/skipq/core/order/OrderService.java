@@ -84,6 +84,25 @@ public class OrderService {
             }
         });
 
+        LocalDateTime scheduledPickupAt = request.scheduledPickupAt();
+        OrderType orderType = OrderType.IMMEDIATE;
+
+        if (scheduledPickupAt != null) {
+            LocalTime windowStart = LocalTime.parse(schedulingWindowStart);
+            LocalTime windowEnd   = LocalTime.parse(schedulingWindowEnd);
+            LocalTime pickupTime  = scheduledPickupAt.toLocalTime();
+
+            if (pickupTime.isBefore(windowStart) || pickupTime.isAfter(windowEnd)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Scheduled pickup must be between " + schedulingWindowStart + " and " + schedulingWindowEnd);
+            }
+            if (scheduledPickupAt.isBefore(LocalDateTime.now().plusMinutes(minLeadMinutes))) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Scheduled pickup must be at least " + minLeadMinutes + " minutes from now");
+            }
+            orderType = OrderType.SCHEDULED;
+        }
+
         List<OrderItem> orderItems = request.items().stream().map(itemReq -> {
             MenuItem menuItem = menuItemRepository.findById(itemReq.menuItemId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Menu item not found: " + itemReq.menuItemId()));
@@ -115,25 +134,6 @@ public class OrderService {
                     .unitPrice(unitPrice)
                     .build();
         }).toList();
-
-        LocalDateTime scheduledPickupAt = request.scheduledPickupAt();
-        OrderType orderType = OrderType.IMMEDIATE;
-
-        if (scheduledPickupAt != null) {
-            LocalTime windowStart = LocalTime.parse(schedulingWindowStart);
-            LocalTime windowEnd   = LocalTime.parse(schedulingWindowEnd);
-            LocalTime pickupTime  = scheduledPickupAt.toLocalTime();
-
-            if (pickupTime.isBefore(windowStart) || pickupTime.isAfter(windowEnd)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Scheduled pickup must be between " + schedulingWindowStart + " and " + schedulingWindowEnd);
-            }
-            if (scheduledPickupAt.isBefore(LocalDateTime.now().plusMinutes(minLeadMinutes))) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Scheduled pickup must be at least " + minLeadMinutes + " minutes from now");
-            }
-            orderType = OrderType.SCHEDULED;
-        }
 
         BigDecimal subtotal    = orderItems.stream()
                 .map(i -> i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
