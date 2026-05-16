@@ -133,7 +133,7 @@ class OrderServiceTest {
         });
         when(razorpayService.createOrder(anyLong(), anyString())).thenReturn("order_rzp123");
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
         PlaceOrderResponse response = orderService.placeOrder(userId, request);
 
         assertThat(response.razorpayOrderId()).isEqualTo("order_rzp123");
@@ -159,7 +159,7 @@ class OrderServiceTest {
         });
         when(razorpayService.createOrder(anyLong(), anyString())).thenReturn("order_rzp456");
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), v.getId(), 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), v.getId(), 1)), null);
         PlaceOrderResponse response = orderService.placeOrder(userId, request);
 
         // ₹150 variant, 3% platform fee = ₹4.50, total ₹154.50 → 15450 paise
@@ -180,7 +180,7 @@ class OrderServiceTest {
         });
         when(razorpayService.createOrder(anyLong(), anyString())).thenReturn("order_rzp123");
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
         orderService.placeOrder(userId, request);
 
         // razorpayOrderId is set on the managed entity after save — verify status/payment at save time
@@ -204,7 +204,7 @@ class OrderServiceTest {
         });
         when(razorpayService.createOrder(anyLong(), anyString())).thenThrow(new RazorpayException("network error"));
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
@@ -217,7 +217,7 @@ class OrderServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
@@ -233,7 +233,7 @@ class OrderServiceTest {
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
         when(menuItemRepository.findById(itemId)).thenReturn(Optional.empty());
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(itemId, null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(itemId, null, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
@@ -247,7 +247,7 @@ class OrderServiceTest {
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
         when(menuItemRepository.findById(item.getId())).thenReturn(Optional.of(item));
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
@@ -263,7 +263,7 @@ class OrderServiceTest {
         when(menuItemRepository.findById(item.getId())).thenReturn(Optional.of(item));
         when(menuVariantRepository.findById(badVariantId)).thenReturn(Optional.empty());
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), badVariantId, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), badVariantId, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
@@ -282,7 +282,7 @@ class OrderServiceTest {
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
         when(menuItemRepository.findById(item.getId())).thenReturn(Optional.of(item));
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
@@ -294,7 +294,7 @@ class OrderServiceTest {
         when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
 
-        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)));
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)), null);
         assertThatThrownBy(() -> orderService.placeOrder(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));

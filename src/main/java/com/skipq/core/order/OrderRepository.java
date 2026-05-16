@@ -83,6 +83,17 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         """)
     List<Order> findAllWithItems();
 
+    @Query("""
+        SELECT DISTINCT o FROM Order o
+        JOIN FETCH o.vendor
+        JOIN FETCH o.items i
+        JOIN FETCH i.menuItem
+        LEFT JOIN FETCH i.variant
+        WHERE o.status = com.skipq.core.common.OrderStatus.SCHEDULED
+          AND o.scheduledPickupAt <= :cutoff
+        """)
+    List<Order> findDueScheduledOrders(@Param("cutoff") LocalDateTime cutoff);
+
     @Modifying
     @Query("DELETE FROM Order o WHERE o.status = com.skipq.core.common.OrderStatus.AWAITING_PAYMENT AND o.createdAt < :cutoff")
     int deleteStaleAwaitingPaymentOrders(@Param("cutoff") LocalDateTime cutoff);
