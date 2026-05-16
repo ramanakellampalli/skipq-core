@@ -40,6 +40,11 @@ public class OrderService {
     private static final BigDecimal GST_RATE      = new BigDecimal("0.025");
     private static final BigDecimal PLATFORM_RATE = new BigDecimal("0.03");
 
+    private static final String CH_VENDOR  = "vendor:";
+    private static final String CH_ORDER   = "order:";
+    private static final String EVT_ORDER  = "order";
+    private static final String EVT_STATUS = "status";
+
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final UserRepository userRepository;
@@ -88,18 +93,7 @@ public class OrderService {
         OrderType orderType = OrderType.IMMEDIATE;
 
         if (scheduledPickupAt != null) {
-            LocalTime windowStart = LocalTime.parse(schedulingWindowStart);
-            LocalTime windowEnd   = LocalTime.parse(schedulingWindowEnd);
-            LocalTime pickupTime  = scheduledPickupAt.toLocalTime();
-
-            if (pickupTime.isBefore(windowStart) || pickupTime.isAfter(windowEnd)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Scheduled pickup must be between " + schedulingWindowStart + " and " + schedulingWindowEnd);
-            }
-            if (scheduledPickupAt.isBefore(LocalDateTime.now().plusMinutes(minLeadMinutes))) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Scheduled pickup must be at least " + minLeadMinutes + " minutes from now");
-            }
+            validateScheduledPickup(scheduledPickupAt);
             orderType = OrderType.SCHEDULED;
         }
 
@@ -195,13 +189,13 @@ public class OrderService {
             order.setStatus(OrderStatus.SCHEDULED);
             orderRepository.save(order);
             // Notify customer only — vendor does not see this until dispatch
-            ablyService.publish("order:" + order.getId(), "status", toResponse(order, order.getItems()));
+            ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, toResponse(order, order.getItems()));
         } else {
             order.setStatus(OrderStatus.PENDING);
             orderRepository.save(order);
             OrderResponse response = toResponse(order, order.getItems());
-            ablyService.publish("vendor:" + order.getVendor().getId(), "order", response);
-            ablyService.publish("order:" + order.getId(), "status", response);
+            ablyService.publish(CH_VENDOR + order.getVendor().getId(), EVT_ORDER, response);
+            ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, response);
         }
     }
 
@@ -210,8 +204,8 @@ public class OrderService {
         order.setStatus(OrderStatus.PENDING);
         orderRepository.save(order);
         OrderResponse response = toResponse(order, order.getItems());
-        ablyService.publish("vendor:" + order.getVendor().getId(), "order", response);
-        ablyService.publish("order:" + order.getId(), "status", response);
+        ablyService.publish(CH_VENDOR + order.getVendor().getId(), EVT_ORDER, response);
+        ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, response);
     }
 
     @Transactional
@@ -253,7 +247,7 @@ public class OrderService {
         order.setPaymentStatus(PaymentStatus.REFUNDED);
         orderRepository.save(order);
 
-        ablyService.publish("order:" + order.getId(), "status", toResponse(order, order.getItems()));
+        ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, toResponse(order, order.getItems()));
         fcmService.sendToUser(order.getUser(), "Order cancelled", "Your order has been cancelled. Full refund initiated.");
     }
 
@@ -306,11 +300,26 @@ public class OrderService {
         }
 
         OrderResponse response = toResponse(order, order.getItems());
-        ablyService.publish("vendor:" + vendor.getId(), "order", response);
-        ablyService.publish("order:" + order.getId(), "status", response);
+        ablyService.publish(CH_VENDOR + vendor.getId(), EVT_ORDER, response);
+        ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, response);
         fcmService.sendToUser(order.getUser(), notificationTitle(newStatus), notificationBody(newStatus, vendor.getName()));
 
         return response;
+    }
+
+    private void validateScheduledPickup(LocalDateTime scheduledPickupAt) {
+        LocalTime windowStart = LocalTime.parse(schedulingWindowStart);
+        LocalTime windowEnd   = LocalTime.parse(schedulingWindowEnd);
+        LocalTime pickupTime  = scheduledPickupAt.toLocalTime();
+
+        if (pickupTime.isBefore(windowStart) || pickupTime.isAfter(windowEnd)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Scheduled pickup must be between " + schedulingWindowStart + " and " + schedulingWindowEnd);
+        }
+        if (scheduledPickupAt.isBefore(LocalDateTime.now().plusMinutes(minLeadMinutes))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Scheduled pickup must be at least " + minLeadMinutes + " minutes from now");
+        }
     }
 
     private void fireVendorTransfer(Order order) {
