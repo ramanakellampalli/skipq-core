@@ -3,6 +3,7 @@ package com.skipq.core.auth;
 import com.skipq.core.auth.dto.*;
 import com.skipq.core.campus.Campus;
 import com.skipq.core.campus.CampusRepository;
+import com.skipq.core.common.AccountStatus;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.config.RazorpayService;
 import com.skipq.core.vendor.Vendor;
@@ -79,6 +80,15 @@ public class AuthService {
         } catch (Exception e) {
             log.debug("Authentication failed for user: {} - {}", user.getId(), e.getMessage());
             throw e;
+        }
+
+        if (user.getRole() == UserRole.VENDOR) {
+            Vendor vendor = vendorRepository.findByUserId(user.getId())
+                    .orElseThrow(() -> new IllegalStateException("Vendor profile not found"));
+            if (vendor.getAccountStatus() == AccountStatus.SUSPENDED) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.FORBIDDEN, vendor.getSuspensionNote());
+            }
         }
 
         if (user.getRole() == UserRole.STUDENT && !user.isEmailVerified()) {

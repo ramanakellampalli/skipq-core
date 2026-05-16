@@ -1,0 +1,2 @@
+ALTER TABLE vendors ADD COLUMN account_status  VARCHAR(20) NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE vendors ADD COLUMN suspension_note TEXT;

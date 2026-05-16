@@ -6,6 +6,7 @@ import com.skipq.core.auth.UserRepository;
 import com.skipq.core.campus.Campus;
 import com.skipq.core.campus.CampusRepository;
 import com.skipq.core.campus.dto.CampusResponse;
+import com.skipq.core.common.AccountStatus;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.notification.EmailService;
 import com.skipq.core.order.OrderRepository;
@@ -157,5 +158,16 @@ public class AdminService {
         List<AdminServiceRequestResponse> serviceRequests = serviceRequestService.findAll();
 
         return new AdminSyncResponse(stats, campuses, vendors, orders, serviceRequests);
+    }
+
+    @Transactional
+    public void updateVendorStatus(UUID vendorId, UpdateVendorStatusRequest request) {
+        Vendor vendor = vendorRepository.findById(vendorId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Vendor not found"));
+        vendor.setAccountStatus(request.status());
+        vendor.setSuspensionNote(request.status() == AccountStatus.SUSPENDED ? request.note() : null);
+        vendorRepository.save(vendor);
+        log.info("Vendor {} status updated to {} by admin", vendorId, request.status());
     }
 }
