@@ -1,6 +1,7 @@
 package com.skipq.core.vendor;
 
 import com.skipq.core.auth.UserRepository;
+import com.skipq.core.common.OrderStatus;
 import com.skipq.core.menu.MenuItem;
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.MenuItemService;
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -76,13 +78,14 @@ public class VendorService {
             return new OrderResponse(order.getId(), vendorInfo, state, pricing, timeline, itemResponses);
         }).toList();
 
+        var activeStatuses = EnumSet.of(OrderStatus.PENDING, OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY);
+        var pastStatuses   = EnumSet.of(OrderStatus.COMPLETED, OrderStatus.REJECTED, OrderStatus.CANCELLED);
+
         List<OrderResponse> activeOrders = allOrders.stream()
-                .filter(o -> o.state().orderStatus() != com.skipq.core.common.OrderStatus.COMPLETED
-                          && o.state().orderStatus() != com.skipq.core.common.OrderStatus.REJECTED)
+                .filter(o -> activeStatuses.contains(o.state().orderStatus()))
                 .toList();
         List<OrderResponse> pastOrders = allOrders.stream()
-                .filter(o -> o.state().orderStatus() == com.skipq.core.common.OrderStatus.COMPLETED
-                          || o.state().orderStatus() == com.skipq.core.common.OrderStatus.REJECTED)
+                .filter(o -> pastStatuses.contains(o.state().orderStatus()))
                 .toList();
 
         List<MenuItemResponse> items = menuItemRepository.findAllByVendorIdWithVariants(vendor.getId())
