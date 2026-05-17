@@ -123,7 +123,8 @@ public class AdminService {
         List<VendorResponse> vendors = vendorRepository.findAll().stream()
                 .map(v -> new VendorResponse(v.getId(), v.getName(), v.isOpen(), v.getPrepTime(),
                         v.getBusinessName(), v.isGstRegistered(), v.getGstin(), v.isKycApproved(),
-                        v.getCampus().getId(), v.getCampus().getName()))
+                        v.getCampus().getId(), v.getCampus().getName(),
+                        v.getAccountStatus(), v.getSuspensionNote()))
                 .toList();
 
         List<OrderResponse> orders = orderRepository.findAllWithItems().stream()

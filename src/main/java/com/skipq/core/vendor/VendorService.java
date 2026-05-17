@@ -133,6 +133,7 @@ public class VendorService {
     private VendorResponse toResponse(Vendor vendor) {
         return new VendorResponse(vendor.getId(), vendor.getName(), vendor.isOpen(), vendor.getPrepTime(),
                 vendor.getBusinessName(), vendor.isGstRegistered(), vendor.getGstin(), vendor.isKycApproved(),
-                vendor.getCampus().getId(), vendor.getCampus().getName());
+                vendor.getCampus().getId(), vendor.getCampus().getName(),
+                vendor.getAccountStatus(), vendor.getSuspensionNote());
     }
 }
