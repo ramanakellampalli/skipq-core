@@ -1,5 +1,6 @@
 package com.skipq.core.vendor.dto;
 
+import com.skipq.core.common.AccountStatus;
 import java.util.UUID;
 
 public record VendorResponse(
@@ -12,5 +13,7 @@ public record VendorResponse(
         String gstin,
         boolean kycApproved,
         UUID campusId,
-        String campusName
+        String campusName,
+        AccountStatus accountStatus,
+        String suspensionNote
 ) {}
