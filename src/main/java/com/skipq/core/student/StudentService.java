@@ -7,8 +7,8 @@ import com.skipq.core.menu.MenuItemService;
 import com.skipq.core.student.dto.StudentMenuResponse;
 import com.skipq.core.order.Order;
 import com.skipq.core.order.OrderItemRepository;
+import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
-import com.skipq.core.order.dto.OrderItemResponse;
 import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.student.dto.StudentProfile;
 import com.skipq.core.student.dto.StudentSyncResponse;
@@ -21,7 +21,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,6 +44,7 @@ public class StudentService {
     private final UserRepository userRepository;
     private final VendorImageService vendorImageService;
     private final ServiceRequestService serviceRequestService;
+    private final OrderMapper orderMapper;
 
     @Transactional(readOnly = true)
     public StudentSyncResponse sync(UUID userId) {
@@ -68,12 +68,12 @@ public class StudentService {
 
         List<OrderResponse> activeOrders = orders.stream()
                 .filter(o -> ACTIVE_STATUSES.contains(o.getStatus()))
-                .map(this::toResponse)
+                .map(orderMapper::toResponse)
                 .toList();
 
         List<OrderResponse> pastOrders = orders.stream()
                 .filter(o -> !ACTIVE_STATUSES.contains(o.getStatus()))
-                .map(this::toResponse)
+                .map(orderMapper::toResponse)
                 .toList();
 
         OrderResponse activeOrder = activeOrders.isEmpty() ? null : activeOrders.get(0);
@@ -101,25 +101,4 @@ public class StudentService {
         userRepository.deleteById(userId);
     }
 
-    private OrderResponse toResponse(Order order) {
-        List<OrderItemResponse> items = order.getItems().stream()
-                .map(i -> new OrderItemResponse(
-                        i.getMenuItem().getId(),
-                        i.getVariant() != null ? i.getVariant().getId() : null,
-                        i.getMenuItem().getName(),
-                        i.getVariantLabel(),
-                        i.getQuantity(),
-                        i.getUnitPrice(),
-                        i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity()))
-                ))
-                .toList();
-
-        var vendorInfo = new OrderResponse.VendorInfo(order.getVendor().getId(), order.getVendor().getName());
-        var state      = new OrderResponse.OrderState(order.getStatus(), order.getPaymentStatus());
-        var tax        = new OrderResponse.TaxBreakdown(order.getCgst(), order.getSgst(), order.getIgst(), order.getTaxAmount());
-        var fees       = new OrderResponse.Fees(order.getPlatformFee(), order.getTotalServiceFee());
-        var pricing    = new OrderResponse.Pricing(order.getSubtotal(), tax, fees, order.getTotalAmount());
-        var timeline   = new OrderResponse.Timeline(order.getCreatedAt(), order.getEstimatedReadyAt(), order.getOrderType(), order.getScheduledPickupAt());
-        return new OrderResponse(order.getId(), vendorInfo, state, pricing, timeline, items);
-    }
 }

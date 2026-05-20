@@ -9,8 +9,8 @@ import com.skipq.core.campus.dto.CampusResponse;
 import com.skipq.core.common.AccountStatus;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.notification.EmailService;
+import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
-import com.skipq.core.order.dto.OrderItemResponse;
 import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.order.dto.OrderStatsProjection;
 import com.skipq.core.support.ServiceRequestService;
@@ -40,6 +40,7 @@ public class AdminService {
     private final VendorRepository vendorRepository;
     private final CampusRepository campusRepository;
     private final OrderRepository orderRepository;
+    private final OrderMapper orderMapper;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final ServiceRequestService serviceRequestService;
@@ -127,26 +128,8 @@ public class AdminService {
                         v.getAccountStatus(), v.getSuspensionNote()))
                 .toList();
 
-        List<OrderResponse> orders = orderRepository.findAllWithItems().stream()
-                .map(o -> {
-                    List<OrderItemResponse> items = o.getItems().stream()
-                            .map(i -> new OrderItemResponse(
-                                    i.getMenuItem().getId(),
-                                    i.getVariant() != null ? i.getVariant().getId() : null,
-                                    i.getMenuItem().getName(),
-                                    i.getVariantLabel(),
-                                    i.getQuantity(),
-                                    i.getUnitPrice(),
-                                    i.getUnitPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantity()))
-                            )).toList();
-                    var vendorInfo = new OrderResponse.VendorInfo(o.getVendor().getId(), o.getVendor().getName());
-                    var state      = new OrderResponse.OrderState(o.getStatus(), o.getPaymentStatus());
-                    var tax        = new OrderResponse.TaxBreakdown(o.getCgst(), o.getSgst(), o.getIgst(), o.getTaxAmount());
-                    var fees       = new OrderResponse.Fees(o.getPlatformFee(), o.getTotalServiceFee());
-                    var pricing    = new OrderResponse.Pricing(o.getSubtotal(), tax, fees, o.getTotalAmount());
-                    var timeline   = new OrderResponse.Timeline(o.getCreatedAt(), o.getEstimatedReadyAt(), o.getOrderType(), o.getScheduledPickupAt());
-                    return new OrderResponse(o.getId(), vendorInfo, state, pricing, timeline, items);
-                }).toList();
+        List<OrderResponse> orders = orderRepository.findTodaysOrdersWithItems().stream()
+                .map(orderMapper::toResponse).toList();
 
         OrderStatsProjection projection = orderRepository.getTodayStats();
         AdminStatsResponse stats = new AdminStatsResponse(
