@@ -10,7 +10,6 @@ import com.skipq.core.common.PaymentStatus;
 import com.skipq.core.config.AblyService;
 import com.skipq.core.config.FcmService;
 import com.skipq.core.config.RazorpayService;
-import com.skipq.core.config.RazorpayTransferRequest;
 import com.skipq.core.menu.MenuItem;
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.MenuVariant;
@@ -23,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -52,6 +52,8 @@ class OrderServiceTest {
     @Mock AblyService ablyService;
     @Mock FcmService fcmService;
     @Mock RazorpayService razorpayService;
+    @Spy  OrderMapper orderMapper;
+    @Spy  OrderTransitionPolicy transitionPolicy;
 
     @InjectMocks OrderService orderService;
 

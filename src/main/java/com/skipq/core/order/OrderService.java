@@ -29,10 +29,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -42,13 +39,6 @@ public class OrderService {
 
     private static final BigDecimal GST_RATE      = new BigDecimal("0.025");
     private static final BigDecimal PLATFORM_RATE = new BigDecimal("0.03");
-
-    private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
-            OrderStatus.PENDING,   EnumSet.of(OrderStatus.ACCEPTED, OrderStatus.REJECTED),
-            OrderStatus.ACCEPTED,  EnumSet.of(OrderStatus.PREPARING, OrderStatus.REJECTED),
-            OrderStatus.PREPARING, EnumSet.of(OrderStatus.READY, OrderStatus.REJECTED),
-            OrderStatus.READY,     EnumSet.of(OrderStatus.COMPLETED)
-    );
 
     private static final String CH_VENDOR  = "vendor:";
     private static final String CH_ORDER   = "order:";
@@ -64,6 +54,8 @@ public class OrderService {
     private final AblyService ablyService;
     private final FcmService fcmService;
     private final RazorpayService razorpayService;
+    private final OrderMapper orderMapper;
+    private final OrderTransitionPolicy transitionPolicy;
 
     @Value("${app.razorpay.key-id}")
     private String razorpayKeyId;
@@ -202,11 +194,11 @@ public class OrderService {
             order.setStatus(OrderStatus.SCHEDULED);
             orderRepository.save(order);
             // Notify customer only — vendor does not see this until dispatch
-            ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, toResponse(order, order.getItems()));
+            ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, orderMapper.toResponse(order));
         } else {
             order.setStatus(OrderStatus.PENDING);
             orderRepository.save(order);
-            OrderResponse response = toResponse(order, order.getItems());
+            OrderResponse response = orderMapper.toResponse(order);
             ablyService.publish(CH_VENDOR + order.getVendor().getId(), EVT_ORDER, response);
             ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, response);
         }
@@ -216,7 +208,7 @@ public class OrderService {
     public void dispatchScheduledOrder(Order order) {
         order.setStatus(OrderStatus.PENDING);
         orderRepository.save(order);
-        OrderResponse response = toResponse(order, order.getItems());
+        OrderResponse response = orderMapper.toResponse(order);
         ablyService.publish(CH_VENDOR + order.getVendor().getId(), EVT_ORDER, response);
         ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, response);
     }
@@ -260,7 +252,7 @@ public class OrderService {
         order.setPaymentStatus(PaymentStatus.REFUNDED);
         orderRepository.save(order);
 
-        ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, toResponse(order, order.getItems()));
+        ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, orderMapper.toResponse(order));
         fcmService.sendToUser(order.getUser(), "Order cancelled", "Your order has been cancelled. Full refund initiated.");
     }
 
@@ -273,20 +265,20 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
 
-        return toResponse(order, order.getItems());
+        return orderMapper.toResponse(order);
     }
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getMyOrders(UUID userId) {
         return orderRepository.findAllByUserIdWithItems(userId).stream()
-                .map(order -> toResponse(order, order.getItems()))
+                .map(order -> orderMapper.toResponse(order))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getVendorOrders(UUID userId) {
         return orderRepository.findAllByVendorUserIdWithItems(userId).stream()
-                .map(order -> toResponse(order, order.getItems()))
+                .map(order -> orderMapper.toResponse(order))
                 .toList();
     }
 
@@ -302,11 +294,7 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order does not belong to your store");
         }
 
-        Set<OrderStatus> allowed = ALLOWED_TRANSITIONS.getOrDefault(order.getStatus(), Set.of());
-        if (!allowed.contains(newStatus)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Cannot transition order from " + order.getStatus() + " to " + newStatus);
-        }
+        transitionPolicy.validate(order.getStatus(), newStatus);
 
         order.setStatus(newStatus);
         if (newStatus == OrderStatus.REJECTED) {
@@ -318,7 +306,7 @@ public class OrderService {
             fireVendorTransfer(order);
         }
 
-        OrderResponse response = toResponse(order, order.getItems());
+        OrderResponse response = orderMapper.toResponse(order);
         ablyService.publish(CH_VENDOR + vendor.getId(), EVT_ORDER, response);
         ablyService.publish(CH_ORDER + order.getId(), EVT_STATUS, response);
         fcmService.sendToUser(order.getUser(), notificationTitle(newStatus), notificationBody(newStatus, vendor.getName()));
@@ -403,26 +391,4 @@ public class OrderService {
         };
     }
 
-    private OrderResponse toResponse(Order order, List<OrderItem> items) {
-        List<OrderItemResponse> itemResponses = items.stream()
-                .map(i -> new OrderItemResponse(
-                        i.getMenuItem().getId(),
-                        i.getVariant() != null ? i.getVariant().getId() : null,
-                        i.getMenuItem().getName(),
-                        i.getVariantLabel(),
-                        i.getQuantity(),
-                        i.getUnitPrice(),
-                        i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity()))
-                ))
-                .toList();
-
-        var vendorInfo = new OrderResponse.VendorInfo(order.getVendor().getId(), order.getVendor().getName());
-        var state      = new OrderResponse.OrderState(order.getStatus(), order.getPaymentStatus());
-        var tax        = new OrderResponse.TaxBreakdown(order.getCgst(), order.getSgst(), order.getIgst(), order.getTaxAmount());
-        var fees       = new OrderResponse.Fees(order.getPlatformFee(), order.getTotalServiceFee());
-        var pricing    = new OrderResponse.Pricing(order.getSubtotal(), tax, fees, order.getTotalAmount());
-        var timeline   = new OrderResponse.Timeline(order.getCreatedAt(), order.getEstimatedReadyAt(), order.getOrderType(), order.getScheduledPickupAt());
-
-        return new OrderResponse(order.getId(), vendorInfo, state, pricing, timeline, itemResponses);
-    }
 }

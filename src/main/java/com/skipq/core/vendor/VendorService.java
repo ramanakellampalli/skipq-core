@@ -7,8 +7,8 @@ import com.skipq.core.menu.MenuItemService;
 import com.skipq.core.menu.dto.MenuItemResponse;
 import com.skipq.core.order.Order;
 import com.skipq.core.order.OrderItemRepository;
+import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
-import com.skipq.core.order.dto.OrderItemResponse;
 import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.support.ServiceRequestService;
 import com.skipq.core.support.dto.ServiceRequestResponse;
@@ -34,6 +34,7 @@ public class VendorService {
     private final MenuItemService menuItemService;
     private final UserRepository userRepository;
     private final ServiceRequestService serviceRequestService;
+    private final OrderMapper orderMapper;
 
     public VendorResponse getProfile(UUID userId) {
         return toResponse(findByUserId(userId));
@@ -55,27 +56,7 @@ public class VendorService {
                 ? findByUserId(userId)
                 : orders.get(0).getVendor();
 
-        List<OrderResponse> allOrders = orders.stream().map(order -> {
-            List<OrderItemResponse> itemResponses = order.getItems().stream()
-                    .map(i -> new OrderItemResponse(
-                            i.getMenuItem().getId(),
-                            i.getVariant() != null ? i.getVariant().getId() : null,
-                            i.getMenuItem().getName(),
-                            i.getVariantLabel(),
-                            i.getQuantity(),
-                            i.getUnitPrice(),
-                            i.getUnitPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantity()))
-                    ))
-                    .toList();
-
-            var vendorInfo = new OrderResponse.VendorInfo(order.getVendor().getId(), order.getVendor().getName());
-            var state      = new OrderResponse.OrderState(order.getStatus(), order.getPaymentStatus());
-            var tax        = new OrderResponse.TaxBreakdown(order.getCgst(), order.getSgst(), order.getIgst(), order.getTaxAmount());
-            var fees       = new OrderResponse.Fees(order.getPlatformFee(), order.getTotalServiceFee());
-            var pricing    = new OrderResponse.Pricing(order.getSubtotal(), tax, fees, order.getTotalAmount());
-            var timeline   = new OrderResponse.Timeline(order.getCreatedAt(), order.getEstimatedReadyAt(), order.getOrderType(), order.getScheduledPickupAt());
-            return new OrderResponse(order.getId(), vendorInfo, state, pricing, timeline, itemResponses);
-        }).toList();
+        List<OrderResponse> allOrders = orders.stream().map(orderMapper::toResponse).toList();
 
         var activeStatuses = EnumSet.of(OrderStatus.PENDING, OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.READY);
         var pastStatuses   = EnumSet.of(OrderStatus.COMPLETED, OrderStatus.REJECTED, OrderStatus.CANCELLED);
