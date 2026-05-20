@@ -728,4 +728,55 @@ class OrderServiceTest {
         verify(orderRepository).save(order);
         verify(ablyService).publish(eq("order:" + order.getId()), eq("status"), any());
     }
+
+    // ── variant cross-item validation ─────────────────────────────────────────
+
+    @Test
+    void placeOrder_variantFromDifferentItem_throwsBadRequest() {
+        MenuItem itemA = menuItem(true);
+        MenuItem itemB = menuItem(true);
+        MenuVariant variantOfB = variant(itemB); // variant belongs to itemB, not itemA
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(menuItemRepository.findById(itemA.getId())).thenReturn(Optional.of(itemA));
+        when(menuVariantRepository.findById(variantOfB.getId())).thenReturn(Optional.of(variantOfB));
+
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(itemA.getId(), variantOfB.getId(), 1)), null);
+        assertThatThrownBy(() -> orderService.placeOrder(userId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    // ── order state machine ───────────────────────────────────────────────────
+
+    @Test
+    void updateStatus_invalidTransition_throwsConflict() {
+        // PENDING → READY is not a valid transition (must go PENDING → ACCEPTED → PREPARING → READY)
+        Order order = buildOrder(OrderStatus.PENDING, PaymentStatus.PAID);
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        when(orderRepository.findByIdWithItems(order.getId())).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.updateStatus(userId, order.getId(), OrderStatus.READY))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void updateStatus_terminalState_throwsConflict() {
+        // COMPLETED → REJECTED must be blocked to prevent refund abuse
+        Order order = buildOrder(OrderStatus.COMPLETED, PaymentStatus.PAID);
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        when(orderRepository.findByIdWithItems(order.getId())).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.updateStatus(userId, order.getId(), OrderStatus.REJECTED))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+
+        verify(orderRepository, never()).save(any());
+        verifyNoInteractions(razorpayService);
+    }
 }
