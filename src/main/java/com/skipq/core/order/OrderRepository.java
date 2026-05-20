@@ -42,6 +42,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         JOIN FETCH i.menuItem
         LEFT JOIN FETCH i.variant
         WHERE o.user.id = :userId
+          AND o.createdAt >= LOCAL DATETIME - 30 DAY
         ORDER BY o.createdAt DESC
         """)
     List<Order> findAllByUserIdWithItems(@Param("userId") UUID userId);
@@ -53,6 +54,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         JOIN FETCH i.menuItem
         LEFT JOIN FETCH i.variant
         WHERE v.user.id = :userId
+          AND o.createdAt >= LOCAL DATETIME - 30 DAY
         ORDER BY o.createdAt DESC
         """)
     List<Order> findAllByVendorUserIdWithItems(@Param("userId") UUID userId);
