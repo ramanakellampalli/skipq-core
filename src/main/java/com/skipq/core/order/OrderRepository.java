@@ -79,9 +79,10 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         JOIN FETCH o.items i
         JOIN FETCH i.menuItem
         LEFT JOIN FETCH i.variant
+        WHERE CAST(o.createdAt AS date) = CURRENT_DATE
         ORDER BY o.createdAt DESC
         """)
-    List<Order> findAllWithItems();
+    List<Order> findTodaysOrdersWithItems();
 
     @Query("""
         SELECT DISTINCT o FROM Order o

@@ -128,7 +128,7 @@ public class AdminService {
                         v.getAccountStatus(), v.getSuspensionNote()))
                 .toList();
 
-        List<OrderResponse> orders = orderRepository.findAllWithItems().stream()
+        List<OrderResponse> orders = orderRepository.findTodaysOrdersWithItems().stream()
                 .map(orderMapper::toResponse).toList();
 
         OrderStatsProjection projection = orderRepository.getTodayStats();
