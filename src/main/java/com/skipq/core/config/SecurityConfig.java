@@ -3,6 +3,7 @@ package com.skipq.core.config;
 import com.skipq.core.auth.JwtAuthFilter;
 import com.skipq.core.auth.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -33,6 +34,9 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final UserDetailsServiceImpl userDetailsService;
 
+    @Value("${swagger.enabled:false}")
+    private boolean swaggerEnabled;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -41,14 +45,16 @@ public class SecurityConfig {
             // CSRF attacks require cookie-based sessions to forge requests; they do not apply here.
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/**").permitAll()
-                .requestMatchers("/actuator/health").permitAll()
-                .requestMatchers("/ws/**").permitAll()
-                .requestMatchers("/webhooks/razorpay").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                .anyRequest().authenticated()
-            )
+            .authorizeHttpRequests(auth -> {
+                auth.requestMatchers("/api/v1/auth/**").permitAll();
+                auth.requestMatchers("/actuator/health").permitAll();
+                auth.requestMatchers("/ws/**").permitAll();
+                auth.requestMatchers("/webhooks/razorpay").permitAll();
+                if (swaggerEnabled) {
+                    auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll();
+                }
+                auth.anyRequest().authenticated();
+            })
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

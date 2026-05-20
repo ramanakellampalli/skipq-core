@@ -29,7 +29,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -39,6 +42,13 @@ public class OrderService {
 
     private static final BigDecimal GST_RATE      = new BigDecimal("0.025");
     private static final BigDecimal PLATFORM_RATE = new BigDecimal("0.03");
+
+    private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
+            OrderStatus.PENDING,   EnumSet.of(OrderStatus.ACCEPTED, OrderStatus.REJECTED),
+            OrderStatus.ACCEPTED,  EnumSet.of(OrderStatus.PREPARING, OrderStatus.REJECTED),
+            OrderStatus.PREPARING, EnumSet.of(OrderStatus.READY, OrderStatus.REJECTED),
+            OrderStatus.READY,     EnumSet.of(OrderStatus.COMPLETED)
+    );
 
     private static final String CH_VENDOR  = "vendor:";
     private static final String CH_ORDER   = "order:";
@@ -116,6 +126,9 @@ public class OrderService {
             if (itemReq.variantId() != null) {
                 variant = menuVariantRepository.findById(itemReq.variantId())
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Variant not found: " + itemReq.variantId()));
+                if (!variant.getMenuItem().getId().equals(menuItem.getId())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Variant does not belong to this menu item");
+                }
                 unitPrice = variant.getPrice();
                 variantLabel = variant.getLabel();
             }
@@ -287,6 +300,12 @@ public class OrderService {
 
         if (!order.getVendor().getId().equals(vendor.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order does not belong to your store");
+        }
+
+        Set<OrderStatus> allowed = ALLOWED_TRANSITIONS.getOrDefault(order.getStatus(), Set.of());
+        if (!allowed.contains(newStatus)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cannot transition order from " + order.getStatus() + " to " + newStatus);
         }
 
         order.setStatus(newStatus);
