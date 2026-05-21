@@ -42,36 +42,33 @@ class ProfileControllerTest {
     }
 
     @Test
-    void uploadAvatar_selfUpload_usesCallerId() throws Exception {
+    void uploadAvatar_selfUpload_callsUploadAvatar() throws Exception {
         UUID userId = UUID.randomUUID();
-        UserDetails user = vendorUser(userId);
         when(profileService.uploadAvatar(eq(userId), any(), any())).thenReturn("https://cdn/avatars/" + userId);
 
-        Map<String, String> result = controller.uploadAvatar(user, jpeg(), null);
+        Map<String, String> result = controller.uploadAvatar(vendorUser(userId), jpeg(), null);
 
         assertThat(result.get("url")).isEqualTo("https://cdn/avatars/" + userId);
         verify(profileService).uploadAvatar(eq(userId), any(), eq("image/jpeg"));
     }
 
     @Test
-    void uploadAvatar_adminUploadsForOther_usesTargetId() throws Exception {
+    void uploadAvatar_adminUploadsForVendor_callsUploadVendorLogo() throws Exception {
         UUID adminId = UUID.randomUUID();
-        UUID targetId = UUID.randomUUID();
-        UserDetails admin = adminUser(adminId);
-        when(profileService.uploadAvatar(eq(targetId), any(), any())).thenReturn("https://cdn/avatars/" + targetId);
+        UUID vendorId = UUID.randomUUID();
+        when(profileService.uploadVendorLogo(eq(vendorId), any(), any())).thenReturn("https://cdn/avatars/" + vendorId);
 
-        Map<String, String> result = controller.uploadAvatar(admin, jpeg(), targetId);
+        Map<String, String> result = controller.uploadAvatar(adminUser(adminId), jpeg(), vendorId);
 
-        assertThat(result.get("url")).isEqualTo("https://cdn/avatars/" + targetId);
-        verify(profileService).uploadAvatar(eq(targetId), any(), eq("image/jpeg"));
+        assertThat(result.get("url")).isEqualTo("https://cdn/avatars/" + vendorId);
+        verify(profileService).uploadVendorLogo(eq(vendorId), any(), eq("image/jpeg"));
     }
 
     @Test
-    void uploadAvatar_nonAdminPassesUserId_throws403() {
+    void uploadAvatar_nonAdminPassesVendorId_throws403() {
         UUID userId = UUID.randomUUID();
-        UserDetails vendor = vendorUser(userId);
 
-        assertThatThrownBy(() -> controller.uploadAvatar(vendor, jpeg(), UUID.randomUUID()))
+        assertThatThrownBy(() -> controller.uploadAvatar(vendorUser(userId), jpeg(), UUID.randomUUID()))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value())
                         .isEqualTo(HttpStatus.FORBIDDEN.value()));

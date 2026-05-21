@@ -1,10 +1,7 @@
 package com.skipq.core.profile;
 
-import com.skipq.core.auth.User;
 import com.skipq.core.auth.UserRepository;
-import com.skipq.core.common.UserRole;
 import com.skipq.core.config.R2ImageService;
-import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,13 +10,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,126 +28,79 @@ class ProfileServiceTest {
     private static final byte[] VALID_BYTES = new byte[100];
     private static final String JPEG = "image/jpeg";
 
-    private User studentUser(UUID id) {
-        User u = new User();
-        u.setId(id);
-        u.setRole(UserRole.STUDENT);
-        return u;
-    }
+    @Test
+    void uploadVendorLogo_uploadsAndUpdates() {
+        UUID vendorId = UUID.randomUUID();
+        String expectedUrl = "https://cdn/avatars/" + vendorId;
+        when(r2ImageService.uploadAvatar(vendorId, VALID_BYTES, JPEG)).thenReturn(expectedUrl);
 
-    private User vendorUser(UUID id) {
-        User u = new User();
-        u.setId(id);
-        u.setRole(UserRole.VENDOR);
-        return u;
+        String url = profileService.uploadVendorLogo(vendorId, VALID_BYTES, JPEG);
+
+        assertThat(url).isEqualTo(expectedUrl);
+        verify(vendorRepository).updateLogoUrl(vendorId, expectedUrl);
+        verifyNoInteractions(userRepository);
     }
 
     @Test
-    void uploadAvatar_student_setsAvatarUrl() {
+    void uploadAvatar_uploadsAndUpdates() {
         UUID userId = UUID.randomUUID();
-        User user = studentUser(userId);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(r2ImageService.uploadAvatar(userId, VALID_BYTES, JPEG)).thenReturn("https://cdn/avatars/" + userId);
+        String expectedUrl = "https://cdn/avatars/" + userId;
+        when(r2ImageService.uploadAvatar(userId, VALID_BYTES, JPEG)).thenReturn(expectedUrl);
 
         String url = profileService.uploadAvatar(userId, VALID_BYTES, JPEG);
 
-        assertThat(url).isEqualTo("https://cdn/avatars/" + userId);
-        assertThat(user.getAvatarUrl()).isEqualTo(url);
-        verify(userRepository).save(user);
+        assertThat(url).isEqualTo(expectedUrl);
+        verify(userRepository).updateAvatarUrl(userId, expectedUrl);
         verifyNoInteractions(vendorRepository);
     }
 
     @Test
-    void uploadAvatar_vendor_setsLogoUrl() {
-        UUID userId = UUID.randomUUID();
-        User user = vendorUser(userId);
-        Vendor vendor = new Vendor();
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
-        when(r2ImageService.uploadAvatar(userId, VALID_BYTES, JPEG)).thenReturn("https://cdn/avatars/" + userId);
+    void uploadVendorLogo_pngAccepted() {
+        UUID vendorId = UUID.randomUUID();
+        when(r2ImageService.uploadAvatar(any(), any(), eq("image/png"))).thenReturn("https://cdn/avatars/" + vendorId);
 
-        String url = profileService.uploadAvatar(userId, VALID_BYTES, JPEG);
-
-        assertThat(url).isEqualTo("https://cdn/avatars/" + userId);
-        assertThat(vendor.getLogoUrl()).isEqualTo(url);
-        verify(vendorRepository).save(vendor);
-        verify(userRepository, never()).save(any());
+        assertThat(profileService.uploadVendorLogo(vendorId, VALID_BYTES, "image/png")).isNotNull();
     }
 
     @Test
-    void uploadAvatar_pngContentType_accepted() {
-        UUID userId = UUID.randomUUID();
-        User user = studentUser(userId);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(r2ImageService.uploadAvatar(any(), any(), eq("image/png"))).thenReturn("https://cdn/avatars/" + userId);
+    void uploadVendorLogo_webpAccepted() {
+        UUID vendorId = UUID.randomUUID();
+        when(r2ImageService.uploadAvatar(any(), any(), eq("image/webp"))).thenReturn("https://cdn/avatars/" + vendorId);
 
-        assertThat(profileService.uploadAvatar(userId, VALID_BYTES, "image/png")).isNotNull();
+        assertThat(profileService.uploadVendorLogo(vendorId, VALID_BYTES, "image/webp")).isNotNull();
     }
 
     @Test
-    void uploadAvatar_webpContentType_accepted() {
-        UUID userId = UUID.randomUUID();
-        User user = studentUser(userId);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(r2ImageService.uploadAvatar(any(), any(), eq("image/webp"))).thenReturn("https://cdn/avatars/" + userId);
-
-        assertThat(profileService.uploadAvatar(userId, VALID_BYTES, "image/webp")).isNotNull();
-    }
-
-    @Test
-    void uploadAvatar_nullContentType_throws400() {
-        UUID userId = UUID.randomUUID();
-
-        assertThatThrownBy(() -> profileService.uploadAvatar(userId, VALID_BYTES, null))
+    void uploadVendorLogo_nullContentType_throws400() {
+        assertThatThrownBy(() -> profileService.uploadVendorLogo(UUID.randomUUID(), VALID_BYTES, null))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
-
-        verifyNoInteractions(userRepository, r2ImageService);
+        verifyNoInteractions(r2ImageService);
     }
 
     @Test
-    void uploadAvatar_unsupportedType_throws400() {
-        UUID userId = UUID.randomUUID();
-
-        assertThatThrownBy(() -> profileService.uploadAvatar(userId, VALID_BYTES, "application/pdf"))
+    void uploadVendorLogo_unsupportedType_throws400() {
+        assertThatThrownBy(() -> profileService.uploadVendorLogo(UUID.randomUUID(), VALID_BYTES, "application/pdf"))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
+        verifyNoInteractions(r2ImageService);
+    }
 
-        verifyNoInteractions(userRepository, r2ImageService);
+    @Test
+    void uploadVendorLogo_fileTooLarge_throws400() {
+        byte[] bigFile = new byte[6 * 1024 * 1024];
+        assertThatThrownBy(() -> profileService.uploadVendorLogo(UUID.randomUUID(), bigFile, JPEG))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
+        verifyNoInteractions(r2ImageService);
     }
 
     @Test
     void uploadAvatar_fileTooLarge_throws400() {
-        UUID userId = UUID.randomUUID();
         byte[] bigFile = new byte[6 * 1024 * 1024];
-
-        assertThatThrownBy(() -> profileService.uploadAvatar(userId, bigFile, JPEG))
+        assertThatThrownBy(() -> profileService.uploadAvatar(UUID.randomUUID(), bigFile, JPEG))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
-
-        verifyNoInteractions(userRepository, r2ImageService);
-    }
-
-    @Test
-    void uploadAvatar_userNotFound_throws404() {
-        UUID userId = UUID.randomUUID();
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> profileService.uploadAvatar(userId, VALID_BYTES, JPEG))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(404));
-    }
-
-    @Test
-    void uploadAvatar_vendorRecordNotFound_throws404() {
-        UUID userId = UUID.randomUUID();
-        User user = vendorUser(userId);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(r2ImageService.uploadAvatar(any(), any(), any())).thenReturn("https://cdn/avatars/" + userId);
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> profileService.uploadAvatar(userId, VALID_BYTES, JPEG))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(404));
+        verifyNoInteractions(r2ImageService);
     }
 }
