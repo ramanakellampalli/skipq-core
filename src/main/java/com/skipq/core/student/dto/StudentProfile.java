@@ -7,5 +7,6 @@ public record StudentProfile(
         String name,
         String email,
         UUID campusId,
-        String campusName
+        String campusName,
+        String avatarUrl
 ) {}

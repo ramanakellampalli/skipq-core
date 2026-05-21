@@ -74,6 +74,9 @@ public class Vendor {
     @Column(name = "suspension_note", columnDefinition = "TEXT")
     private String suspensionNote;
 
+    @Column(name = "logo_url", length = 512)
+    private String logoUrl;
+
     @Column(name = "reset_otp", length = 6)
     private String resetOtp;
 

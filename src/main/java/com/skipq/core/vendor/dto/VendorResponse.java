@@ -15,5 +15,6 @@ public record VendorResponse(
         UUID campusId,
         String campusName,
         AccountStatus accountStatus,
-        String suspensionNote
+        String suspensionNote,
+        String logoUrl
 ) {}
