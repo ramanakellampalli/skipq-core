@@ -19,7 +19,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ProfileService {
 
-    private static final long MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+    private static final long MAX_BYTES = 5 * 1024 * 1024L;
     private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
     private final UserRepository userRepository;
