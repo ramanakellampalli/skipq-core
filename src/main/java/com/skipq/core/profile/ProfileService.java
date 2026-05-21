@@ -1,10 +1,7 @@
 package com.skipq.core.profile;
 
-import com.skipq.core.auth.User;
 import com.skipq.core.auth.UserRepository;
-import com.skipq.core.common.UserRole;
 import com.skipq.core.config.R2ImageService;
-import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -27,29 +24,27 @@ public class ProfileService {
     private final R2ImageService r2ImageService;
 
     @Transactional
-    public String uploadAvatar(UUID targetUserId, byte[] bytes, String contentType) {
+    public String uploadVendorLogo(UUID vendorId, byte[] bytes, String contentType) {
+        validate(bytes, contentType);
+        String url = r2ImageService.uploadAvatar(vendorId, bytes, contentType);
+        vendorRepository.updateLogoUrl(vendorId, url);
+        return url;
+    }
+
+    @Transactional
+    public String uploadAvatar(UUID userId, byte[] bytes, String contentType) {
+        validate(bytes, contentType);
+        String url = r2ImageService.uploadAvatar(userId, bytes, contentType);
+        userRepository.updateAvatarUrl(userId, url);
+        return url;
+    }
+
+    private void validate(byte[] bytes, String contentType) {
         if (bytes.length > MAX_BYTES) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image must be under 5 MB");
         }
         if (contentType == null || !ALLOWED_TYPES.contains(contentType)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only JPEG, PNG and WebP images are accepted");
         }
-
-        User target = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-
-        String url = r2ImageService.uploadAvatar(targetUserId, bytes, contentType);
-
-        if (target.getRole() == UserRole.VENDOR) {
-            Vendor vendor = vendorRepository.findByUserId(targetUserId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
-            vendor.setLogoUrl(url);
-            vendorRepository.save(vendor);
-        } else {
-            target.setAvatarUrl(url);
-            userRepository.save(target);
-        }
-
-        return url;
     }
 }

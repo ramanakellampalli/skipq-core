@@ -26,19 +26,20 @@ public class ProfileController {
     public Map<String, String> uploadAvatar(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "userId", required = false) UUID targetUserId) throws IOException {
+            @RequestParam(value = "vendorId", required = false) UUID vendorId) throws IOException {
 
-        UUID callerId = UUID.fromString(userDetails.getUsername());
         boolean isAdmin = userDetails.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
-        if (targetUserId != null && !isAdmin) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can upload on behalf of another user");
+        if (vendorId != null && !isAdmin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can upload on behalf of a vendor");
         }
 
-        UUID resolvedTarget = (targetUserId != null) ? targetUserId : callerId;
+        UUID callerId = UUID.fromString(userDetails.getUsername());
+        String url = vendorId != null
+                ? profileService.uploadVendorLogo(vendorId, file.getBytes(), file.getContentType())
+                : profileService.uploadAvatar(callerId, file.getBytes(), file.getContentType());
 
-        String url = profileService.uploadAvatar(resolvedTarget, file.getBytes(), file.getContentType());
         return Map.of("url", url);
     }
 }
