@@ -31,7 +31,7 @@ public class ProfileService {
         if (bytes.length > MAX_BYTES) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image must be under 5 MB");
         }
-        if (!ALLOWED_TYPES.contains(contentType)) {
+        if (contentType == null || !ALLOWED_TYPES.contains(contentType)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only JPEG, PNG and WebP images are accepted");
         }
 

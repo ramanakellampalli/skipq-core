@@ -101,6 +101,17 @@ class ProfileServiceTest {
     }
 
     @Test
+    void uploadAvatar_nullContentType_throws400() {
+        UUID userId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> profileService.uploadAvatar(userId, VALID_BYTES, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
+
+        verifyNoInteractions(userRepository, r2ImageService);
+    }
+
+    @Test
     void uploadAvatar_unsupportedType_throws400() {
         UUID userId = UUID.randomUUID();
 
