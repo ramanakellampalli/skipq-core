@@ -27,7 +27,7 @@ public class ProfileService {
     private final R2ImageService r2ImageService;
 
     @Transactional
-    public String uploadAvatar(UUID callerId, UUID targetUserId, byte[] bytes, String contentType) {
+    public String uploadAvatar(UUID targetUserId, byte[] bytes, String contentType) {
         if (bytes.length > MAX_BYTES) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image must be under 5 MB");
         }

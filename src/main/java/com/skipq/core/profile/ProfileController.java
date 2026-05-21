@@ -38,7 +38,7 @@ public class ProfileController {
 
         UUID resolvedTarget = (targetUserId != null) ? targetUserId : callerId;
 
-        String url = profileService.uploadAvatar(callerId, resolvedTarget, file.getBytes(), file.getContentType());
+        String url = profileService.uploadAvatar(resolvedTarget, file.getBytes(), file.getContentType());
         return Map.of("url", url);
     }
 }
