@@ -57,7 +57,8 @@ public class StudentService {
                 student.getName(),
                 student.getEmail(),
                 campus != null ? campus.getId() : null,
-                campus != null ? campus.getName() : null
+                campus != null ? campus.getName() : null,
+                student.getAvatarUrl()
         );
 
         List<VendorResponse> vendors = campus != null

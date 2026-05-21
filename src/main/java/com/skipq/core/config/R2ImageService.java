@@ -7,12 +7,15 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.net.URI;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -84,6 +87,20 @@ public class R2ImageService {
         }
         Collections.shuffle(pool);
         return pool.stream().limit(count).toList();
+    }
+
+    public String uploadAvatar(UUID userId, byte[] bytes, String contentType) {
+        if (s3 == null) throw new IllegalStateException("R2 not configured");
+        String key = "avatars/" + userId;
+        s3.putObject(
+                PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .contentType(contentType)
+                        .build(),
+                RequestBody.fromBytes(bytes)
+        );
+        return publicUrl + "/" + key;
     }
 
     private List<String> listFolder(String folder) {

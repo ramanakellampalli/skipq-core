@@ -125,7 +125,7 @@ public class AdminService {
                 .map(v -> new VendorResponse(v.getId(), v.getName(), v.isOpen(), v.getPrepTime(),
                         v.getBusinessName(), v.isGstRegistered(), v.getGstin(), v.isKycApproved(),
                         v.getCampus().getId(), v.getCampus().getName(),
-                        v.getAccountStatus(), v.getSuspensionNote()))
+                        v.getAccountStatus(), v.getSuspensionNote(), v.getLogoUrl()))
                 .toList();
 
         List<OrderResponse> orders = orderRepository.findTodaysOrdersWithItems().stream()
