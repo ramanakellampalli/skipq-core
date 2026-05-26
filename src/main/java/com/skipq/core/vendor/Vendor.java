@@ -28,8 +28,8 @@ public class Vendor {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "campus_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "campus_id", nullable = true)
     private Campus campus;
 
     @Column(nullable = false, length = 100)
