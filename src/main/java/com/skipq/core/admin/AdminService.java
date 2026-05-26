@@ -81,7 +81,7 @@ public class AdminService {
                 .isOpen(false)
                 .prepTime(request.defaultPrepTime())
                 .city(request.city())
-                .phone(request.contactPhone());
+                .phone(request.ownerPhone());
 
         if (bypass) {
             user = User.builder()
