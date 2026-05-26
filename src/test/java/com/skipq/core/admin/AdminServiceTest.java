@@ -89,10 +89,10 @@ class AdminServiceTest {
     @Test
     void createVendor_generalVendor_cityBlank_throws() {
         when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
+        var req = new CreateVendorRequest("City Cafe", "owner@gmail.com", "Priya", 10,
+                null, "", "+91 90000 00001", "+91 80000 00002");
 
-        assertThatThrownBy(() -> adminService.createVendor(new CreateVendorRequest(
-                "City Cafe", "owner@gmail.com", "Priya", 10,
-                null, "", "+91 90000 00001", "+91 80000 00002")))
+        assertThatThrownBy(() -> adminService.createVendor(req))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("City is required");
 
@@ -102,10 +102,10 @@ class AdminServiceTest {
     @Test
     void createVendor_generalVendor_cityNull_throws() {
         when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
+        var req = new CreateVendorRequest("City Cafe", "owner@gmail.com", "Priya", 10,
+                null, null, "+91 90000 00001", "+91 80000 00002");
 
-        assertThatThrownBy(() -> adminService.createVendor(new CreateVendorRequest(
-                "City Cafe", "owner@gmail.com", "Priya", 10,
-                null, null, "+91 90000 00001", "+91 80000 00002")))
+        assertThatThrownBy(() -> adminService.createVendor(req))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("City is required");
 
@@ -135,10 +135,10 @@ class AdminServiceTest {
         UUID campusId = UUID.randomUUID();
         when(userRepository.existsByEmail("owner@campus.edu")).thenReturn(false);
         when(campusRepository.findById(campusId)).thenReturn(Optional.empty());
+        var req = new CreateVendorRequest("Campus Stall", "owner@campus.edu", "Ramana", 15,
+                campusId, null, "+91 90000 00001", "+91 80000 00002");
 
-        assertThatThrownBy(() -> adminService.createVendor(new CreateVendorRequest(
-                "Campus Stall", "owner@campus.edu", "Ramana", 15,
-                campusId, null, "+91 90000 00001", "+91 80000 00002")))
+        assertThatThrownBy(() -> adminService.createVendor(req))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Campus not found");
 
@@ -148,10 +148,10 @@ class AdminServiceTest {
     @Test
     void createVendor_emailAlreadyRegistered_throws() {
         when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(true);
+        var req = new CreateVendorRequest("City Cafe", "owner@gmail.com", "Priya", 10,
+                null, "Bangalore", "+91 90000 00001", "+91 80000 00002");
 
-        assertThatThrownBy(() -> adminService.createVendor(new CreateVendorRequest(
-                "City Cafe", "owner@gmail.com", "Priya", 10,
-                null, "Bangalore", "+91 90000 00001", "+91 80000 00002")))
+        assertThatThrownBy(() -> adminService.createVendor(req))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Email already registered");
 
