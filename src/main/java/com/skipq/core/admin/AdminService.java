@@ -119,7 +119,7 @@ public class AdminService {
 
             emailService.sendVendorInvite(request.email(), request.ownerName(), setupToken);
             log.info("Vendor created: {} ({}), campus: {}, invite sent to {}",
-                    request.vendorName(), user.getId(), campus.getName(), request.email());
+                    request.vendorName(), user.getId(), campus != null ? campus.getName() : "general", request.email());
         }
 
         vendorRepository.save(vendorBuilder.build());

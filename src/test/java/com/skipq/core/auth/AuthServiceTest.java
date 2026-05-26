@@ -2,7 +2,9 @@ package com.skipq.core.auth;
 
 import com.skipq.core.auth.dto.ForgotPasswordRequest;
 import com.skipq.core.auth.dto.OtpSentResponse;
+import com.skipq.core.auth.dto.RegisterRequest;
 import com.skipq.core.auth.dto.ResetPasswordRequest;
+import com.skipq.core.campus.Campus;
 import com.skipq.core.campus.CampusRepository;
 import com.skipq.core.auth.dto.LoginRequest;
 import com.skipq.core.common.AccountStatus;
@@ -13,6 +15,7 @@ import com.skipq.core.vendor.VendorRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -69,6 +72,62 @@ class AuthServiceTest {
                 .user(vendorUser)
                 .name("Test Stall")
                 .build();
+    }
+
+    // --- register ---
+
+    @Test
+    void register_campusEmail_savesUserWithCampus() {
+        Campus campus = Campus.builder().id(UUID.randomUUID()).name("Test Campus").emailDomain("campus.edu").build();
+        when(userRepository.existsByEmail("student@campus.edu")).thenReturn(false);
+        when(campusRepository.findByEmailDomain("campus.edu")).thenReturn(Optional.of(campus));
+        when(passwordEncoder.encode("secret123")).thenReturn("hashed");
+
+        authService.register(new RegisterRequest("Ramana", "student@campus.edu", "secret123", "+91 98765 43210"));
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getCampus()).isEqualTo(campus);
+        assertThat(captor.getValue().getPhone()).isEqualTo("+91 98765 43210");
+    }
+
+    @Test
+    void register_generalEmail_savesUserWithNullCampus() {
+        when(userRepository.existsByEmail("user@gmail.com")).thenReturn(false);
+        when(campusRepository.findByEmailDomain("gmail.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("secret123")).thenReturn("hashed");
+
+        authService.register(new RegisterRequest("Priya", "user@gmail.com", "secret123", "+91 91111 22222"));
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getCampus()).isNull();
+        assertThat(captor.getValue().getPhone()).isEqualTo("+91 91111 22222");
+    }
+
+    @Test
+    void register_duplicateEmail_throws() {
+        when(userRepository.existsByEmail("student@campus.edu")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.register(
+                new RegisterRequest("Ramana", "student@campus.edu", "secret123", "+91 98765 43210")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Email already registered");
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void register_sendsOtpAfterSave() {
+        when(userRepository.existsByEmail("user@gmail.com")).thenReturn(false);
+        when(campusRepository.findByEmailDomain("gmail.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("secret123")).thenReturn("hashed");
+
+        OtpSentResponse response = authService.register(
+                new RegisterRequest("Priya", "user@gmail.com", "secret123", "+91 91111 22222"));
+
+        assertThat(response.message()).contains("user@gmail.com");
+        verify(otpService).generateAndSend(any(User.class), eq(OtpPurpose.VERIFY_EMAIL));
     }
 
     // --- forgotPassword: customer ---
