@@ -51,6 +51,7 @@ public class AuthService {
                 .name(request.name())
                 .email(request.email())
                 .passwordHash(passwordEncoder.encode(request.password()))
+                .phone(request.phone())
                 .role(UserRole.STUDENT)
                 .campus(campus)
                 .build();
@@ -228,9 +229,7 @@ public class AuthService {
             return campusRepository.findAll().stream().findFirst()
                     .orElseThrow(() -> new IllegalStateException("No campuses configured"));
         }
-        return campusRepository.findByEmailDomain(domain)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Email domain @" + domain + " is not affiliated with any campus"));
+        return campusRepository.findByEmailDomain(domain).orElse(null);
     }
 
     private AuthResponse toAuthResponse(String token, User user) {

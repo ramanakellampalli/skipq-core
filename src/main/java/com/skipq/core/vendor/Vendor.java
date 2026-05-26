@@ -28,8 +28,8 @@ public class Vendor {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "campus_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "campus_id", nullable = true)
     private Campus campus;
 
     @Column(nullable = false, length = 100)
@@ -73,6 +73,12 @@ public class Vendor {
 
     @Column(name = "suspension_note", columnDefinition = "TEXT")
     private String suspensionNote;
+
+    @Column(name = "city", length = 100)
+    private String city;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
 
     @Column(name = "logo_url", length = 512)
     private String logoUrl;

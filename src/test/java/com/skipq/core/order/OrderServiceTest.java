@@ -306,6 +306,42 @@ class OrderServiceTest {
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
     }
 
+    @Test
+    void placeOrder_generalUser_campusVendor_throwsForbidden() {
+        User generalUser = User.builder().id(userId).name("General").email("g@gmail.com").campus(null).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(generalUser));
+        when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
+
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)), null);
+        assertThatThrownBy(() -> orderService.placeOrder(userId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
+    @Test
+    void placeOrder_campusUser_generalVendor_succeeds() throws Exception {
+        Vendor generalVendor = Vendor.builder().id(vendorId).name("City Cafe").isOpen(true).prepTime(15)
+                .campus(null).gstRegistered(false).build();
+        MenuItem item = MenuItem.builder().id(UUID.randomUUID()).vendor(generalVendor).name("Tea")
+                .isVeg(true).isAvailable(true).displayOrder(0).price(BigDecimal.valueOf(20)).build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(generalVendor));
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(menuItemRepository.findById(item.getId())).thenReturn(Optional.of(item));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order o = inv.getArgument(0);
+            o.setId(UUID.randomUUID());
+            return o;
+        });
+        when(razorpayService.createOrder(anyLong(), anyString())).thenReturn("order_rzp_gen");
+
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
+        PlaceOrderResponse response = orderService.placeOrder(userId, request);
+
+        assertThat(response.razorpayOrderId()).isEqualTo("order_rzp_gen");
+    }
+
     // ── confirmPayment ────────────────────────────────────────────────────────
 
     @Test

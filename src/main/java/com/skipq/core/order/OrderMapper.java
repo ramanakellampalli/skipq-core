@@ -26,6 +26,7 @@ public class OrderMapper {
                 ))
                 .toList();
 
+        var customer   = new OrderResponse.CustomerInfo(order.getUser().getName(), order.getUser().getPhone());
         var vendorInfo = new OrderResponse.VendorInfo(order.getVendor().getId(), order.getVendor().getName());
         var state      = new OrderResponse.OrderState(order.getStatus(), order.getPaymentStatus());
         var tax        = new OrderResponse.TaxBreakdown(order.getCgst(), order.getSgst(), order.getIgst(), order.getTaxAmount());
@@ -33,6 +34,6 @@ public class OrderMapper {
         var pricing    = new OrderResponse.Pricing(order.getSubtotal(), tax, fees, order.getTotalAmount());
         var timeline   = new OrderResponse.Timeline(order.getCreatedAt(), order.getEstimatedReadyAt(), order.getOrderType(), order.getScheduledPickupAt());
 
-        return new OrderResponse(order.getId(), vendorInfo, state, pricing, timeline, itemResponses);
+        return new OrderResponse(order.getId(), customer, vendorInfo, state, pricing, timeline, itemResponses);
     }
 }

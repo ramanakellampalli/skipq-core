@@ -1,5 +1,6 @@
 package com.skipq.core.order;
 
+import com.skipq.core.auth.User;
 import com.skipq.core.common.OrderStatus;
 import com.skipq.core.common.OrderType;
 import com.skipq.core.common.PaymentStatus;
@@ -20,6 +21,14 @@ class OrderMapperTest {
 
     private final OrderMapper mapper = new OrderMapper();
 
+    private User user(String name, String phone) {
+        User u = new User();
+        u.setId(UUID.randomUUID());
+        u.setName(name);
+        u.setPhone(phone);
+        return u;
+    }
+
     private Vendor vendor() {
         Vendor v = new Vendor();
         v.setId(UUID.randomUUID());
@@ -35,9 +44,10 @@ class OrderMapperTest {
         return m;
     }
 
-    private Order baseOrder(Vendor vendor) {
+    private Order baseOrder(Vendor vendor, User user) {
         return Order.builder()
                 .id(UUID.randomUUID())
+                .user(user)
                 .vendor(vendor)
                 .status(OrderStatus.PENDING)
                 .paymentStatus(PaymentStatus.PAID)
@@ -57,7 +67,7 @@ class OrderMapperTest {
     @Test
     void toResponse_mapsVendorAndState() {
         Vendor vendor = vendor();
-        Order order = baseOrder(vendor);
+        Order order = baseOrder(vendor, user("Ramana", "+91 98765 43210"));
         order.setItems(List.of());
 
         OrderResponse response = mapper.toResponse(order);
@@ -70,8 +80,30 @@ class OrderMapperTest {
     }
 
     @Test
+    void toResponse_mapsCustomerInfo_withPhone() {
+        Order order = baseOrder(vendor(), user("Ramana", "+91 98765 43210"));
+        order.setItems(List.of());
+
+        OrderResponse response = mapper.toResponse(order);
+
+        assertThat(response.customer().name()).isEqualTo("Ramana");
+        assertThat(response.customer().phone()).isEqualTo("+91 98765 43210");
+    }
+
+    @Test
+    void toResponse_mapsCustomerInfo_phoneNull() {
+        Order order = baseOrder(vendor(), user("Priya", null));
+        order.setItems(List.of());
+
+        OrderResponse response = mapper.toResponse(order);
+
+        assertThat(response.customer().name()).isEqualTo("Priya");
+        assertThat(response.customer().phone()).isNull();
+    }
+
+    @Test
     void toResponse_mapsPricingCorrectly() {
-        Order order = baseOrder(vendor());
+        Order order = baseOrder(vendor(), user("Ramana", "+91 98765 43210"));
         order.setItems(List.of());
 
         OrderResponse response = mapper.toResponse(order);
@@ -96,7 +128,7 @@ class OrderMapperTest {
                 .unitPrice(new BigDecimal("100.00"))
                 .build();
 
-        Order order = baseOrder(vendor());
+        Order order = baseOrder(vendor(), user("Ramana", "+91 98765 43210"));
         order.setItems(List.of(orderItem));
 
         OrderResponse response = mapper.toResponse(order);
@@ -129,7 +161,7 @@ class OrderMapperTest {
                 .unitPrice(new BigDecimal("120.00"))
                 .build();
 
-        Order order = baseOrder(vendor());
+        Order order = baseOrder(vendor(), user("Ramana", "+91 98765 43210"));
         order.setItems(List.of(orderItem));
 
         OrderResponse response = mapper.toResponse(order);
@@ -142,7 +174,7 @@ class OrderMapperTest {
     @Test
     void toResponse_scheduledOrder_mapsTimeline() {
         LocalDateTime pickupAt = LocalDateTime.now().plusHours(2);
-        Order order = baseOrder(vendor());
+        Order order = baseOrder(vendor(), user("Ramana", "+91 98765 43210"));
         order.setOrderType(OrderType.SCHEDULED);
         order.setScheduledPickupAt(pickupAt);
         order.setItems(List.of());
@@ -166,8 +198,7 @@ class OrderMapperTest {
                 .unitPrice(new BigDecimal("200.00"))
                 .build();
 
-        Order order = baseOrder(vendor());
-        // order.items is null — mapper should use the explicitly passed list
+        Order order = baseOrder(vendor(), user("Ramana", "+91 98765 43210"));
         order.setItems(null);
 
         OrderResponse response = mapper.toResponse(order, List.of(orderItem));
@@ -178,7 +209,7 @@ class OrderMapperTest {
 
     @Test
     void toResponse_emptyItems_returnsEmptyList() {
-        Order order = baseOrder(vendor());
+        Order order = baseOrder(vendor(), user("Ramana", "+91 98765 43210"));
         order.setItems(List.of());
 
         OrderResponse response = mapper.toResponse(order);

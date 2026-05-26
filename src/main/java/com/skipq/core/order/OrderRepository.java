@@ -17,6 +17,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     @Query("""
         SELECT DISTINCT o FROM Order o
+        JOIN FETCH o.user
         JOIN FETCH o.vendor
         JOIN FETCH o.items i
         JOIN FETCH i.menuItem
@@ -27,6 +28,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     @Query("""
         SELECT DISTINCT o FROM Order o
+        JOIN FETCH o.user
         JOIN FETCH o.vendor
         JOIN FETCH o.items i
         JOIN FETCH i.menuItem
@@ -37,6 +39,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     @Query("""
         SELECT DISTINCT o FROM Order o
+        JOIN FETCH o.user
         JOIN FETCH o.vendor
         JOIN FETCH o.items i
         JOIN FETCH i.menuItem
@@ -49,6 +52,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     @Query("""
         SELECT DISTINCT o FROM Order o
+        JOIN FETCH o.user
         JOIN FETCH o.vendor v
         JOIN FETCH o.items i
         JOIN FETCH i.menuItem
@@ -77,6 +81,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     @Query("""
         SELECT DISTINCT o FROM Order o
+        JOIN FETCH o.user
         JOIN FETCH o.vendor
         JOIN FETCH o.items i
         JOIN FETCH i.menuItem

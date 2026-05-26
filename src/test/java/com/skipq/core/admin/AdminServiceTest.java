@@ -1,12 +1,15 @@
 package com.skipq.core.admin;
 
+import com.skipq.core.admin.dto.CreateVendorRequest;
 import com.skipq.core.admin.dto.UpdateVendorStatusRequest;
 import com.skipq.core.auth.User;
 import com.skipq.core.auth.UserRepository;
+import com.skipq.core.campus.Campus;
 import com.skipq.core.campus.CampusRepository;
 import com.skipq.core.common.AccountStatus;
 import com.skipq.core.common.UserRole;
 import com.skipq.core.notification.EmailService;
+import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.config.RazorpayService;
 import com.skipq.core.support.ServiceRequestService;
@@ -15,12 +18,18 @@ import com.skipq.core.vendor.VendorRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,6 +44,7 @@ class AdminServiceTest {
     @Mock UserRepository userRepository;
     @Mock CampusRepository campusRepository;
     @Mock OrderRepository orderRepository;
+    @Mock OrderMapper orderMapper;
     @Mock EmailService emailService;
     @Mock PasswordEncoder passwordEncoder;
     @Mock RazorpayService razorpayService;
@@ -59,6 +69,139 @@ class AdminServiceTest {
                 .accountStatus(AccountStatus.ACTIVE)
                 .build();
     }
+
+    // --- createVendor ---
+
+    @Test
+    void createVendor_generalVendor_bypass_savesVendorWithCityAndPhone() {
+        ReflectionTestUtils.setField(adminService, "bypass", true);
+        when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
+        when(passwordEncoder.encode(any())).thenReturn("hashed");
+
+        adminService.createVendor(new CreateVendorRequest(
+                "City Cafe", "owner@gmail.com", "Priya", 10,
+                null, "Bangalore", "+91 90000 00001", "+91 80000 00002"));
+
+        ArgumentCaptor<Vendor> captor = ArgumentCaptor.forClass(Vendor.class);
+        verify(vendorRepository).save(captor.capture());
+        assertThat(captor.getValue().getCity()).isEqualTo("Bangalore");
+        assertThat(captor.getValue().getPhone()).isEqualTo("+91 80000 00002");
+        assertThat(captor.getValue().getCampus()).isNull();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" "})
+    void createVendor_generalVendor_missingCity_throws(String city) {
+        when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
+        var req = new CreateVendorRequest("City Cafe", "owner@gmail.com", "Priya", 10,
+                null, city, "+91 90000 00001", "+91 80000 00002");
+
+        assertThatThrownBy(() -> adminService.createVendor(req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("City is required");
+
+        verify(vendorRepository, never()).save(any());
+    }
+
+    @Test
+    void createVendor_campusVendor_bypass_savesWithCampus() {
+        ReflectionTestUtils.setField(adminService, "bypass", true);
+        UUID campusId = UUID.randomUUID();
+        Campus campus = Campus.builder().id(campusId).name("Test Campus").emailDomain("campus.edu").build();
+        when(userRepository.existsByEmail("owner@campus.edu")).thenReturn(false);
+        when(campusRepository.findById(campusId)).thenReturn(Optional.of(campus));
+        when(passwordEncoder.encode(any())).thenReturn("hashed");
+
+        adminService.createVendor(new CreateVendorRequest(
+                "Campus Stall", "owner@campus.edu", "Ramana", 15,
+                campusId, null, "+91 90000 00001", "+91 80000 00002"));
+
+        ArgumentCaptor<Vendor> captor = ArgumentCaptor.forClass(Vendor.class);
+        verify(vendorRepository).save(captor.capture());
+        assertThat(captor.getValue().getCampus()).isEqualTo(campus);
+    }
+
+    @Test
+    void createVendor_campusNotFound_throws() {
+        UUID campusId = UUID.randomUUID();
+        when(userRepository.existsByEmail("owner@campus.edu")).thenReturn(false);
+        when(campusRepository.findById(campusId)).thenReturn(Optional.empty());
+        var req = new CreateVendorRequest("Campus Stall", "owner@campus.edu", "Ramana", 15,
+                campusId, null, "+91 90000 00001", "+91 80000 00002");
+
+        assertThatThrownBy(() -> adminService.createVendor(req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Campus not found");
+
+        verify(vendorRepository, never()).save(any());
+    }
+
+    @Test
+    void createVendor_emailAlreadyRegistered_throws() {
+        when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(true);
+        var req = new CreateVendorRequest("City Cafe", "owner@gmail.com", "Priya", 10,
+                null, "Bangalore", "+91 90000 00001", "+91 80000 00002");
+
+        assertThatThrownBy(() -> adminService.createVendor(req))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Email already registered");
+
+        verify(vendorRepository, never()).save(any());
+    }
+
+    @Test
+    void createVendor_setsOwnerPhoneOnUser() {
+        ReflectionTestUtils.setField(adminService, "bypass", true);
+        when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
+        when(passwordEncoder.encode(any())).thenReturn("hashed");
+
+        adminService.createVendor(new CreateVendorRequest(
+                "City Cafe", "owner@gmail.com", "Priya", 10,
+                null, "Bangalore", "+91 90000 00001", "+91 80000 00002"));
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertThat(captor.getValue().getPhone()).isEqualTo("+91 90000 00001");
+    }
+
+    // --- sync ---
+
+    @Test
+    void sync_mapsGeneralVendorWithNullCampus() {
+        Vendor generalVendor = Vendor.builder()
+                .id(UUID.randomUUID())
+                .user(User.builder().id(UUID.randomUUID()).email("v@gmail.com").role(UserRole.VENDOR).build())
+                .name("City Cafe")
+                .campus(null)
+                .city("Bangalore")
+                .phone("+91 80000 00002")
+                .accountStatus(AccountStatus.ACTIVE)
+                .build();
+
+        com.skipq.core.order.dto.OrderStatsProjection projection =
+                mock(com.skipq.core.order.dto.OrderStatsProjection.class);
+        when(projection.getTotalOrders()).thenReturn(0L);
+        when(projection.getRevenue()).thenReturn(java.math.BigDecimal.ZERO);
+        when(projection.getInProgress()).thenReturn(0L);
+
+        when(campusRepository.findAll()).thenReturn(List.of());
+        when(vendorRepository.findAll()).thenReturn(List.of(generalVendor));
+        when(orderRepository.findTodaysOrdersWithItems()).thenReturn(List.of());
+        when(orderRepository.getTodayStats()).thenReturn(projection);
+        when(vendorRepository.countByIsOpenTrue()).thenReturn(0L);
+        when(serviceRequestService.findAll()).thenReturn(List.of());
+
+        var response = adminService.sync();
+
+        assertThat(response.vendors()).hasSize(1);
+        assertThat(response.vendors().get(0).campusId()).isNull();
+        assertThat(response.vendors().get(0).campusName()).isNull();
+        assertThat(response.vendors().get(0).city()).isEqualTo("Bangalore");
+        assertThat(response.vendors().get(0).phone()).isEqualTo("+91 80000 00002");
+    }
+
+    // --- updateVendorStatus ---
 
     @Test
     void updateVendorStatus_suspendsSetsNoteAndStatus() {

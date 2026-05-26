@@ -59,6 +59,9 @@ public class User {
     @Column(name = "avatar_url", length = 512)
     private String avatarUrl;
 
+    @Column(name = "phone", length = 20)
+    private String phone;
+
     @Column(name = "fcm_token")
     private String fcmToken;
 
