@@ -15,6 +15,5 @@ public record CreateVendorRequest(
         @NotNull @Min(1) Integer defaultPrepTime,
         UUID campusId,                              // nullable — null means general vendor
         @Size(max = 100) String city,               // required when campusId is null
-        @NotBlank @Size(max = 20) String ownerPhone,
-        @NotBlank @Size(max = 20) String contactPhone
+        @NotBlank @Size(max = 20) String ownerPhone
 ) {}

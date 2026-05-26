@@ -80,12 +80,12 @@ class AdminServiceTest {
 
         adminService.createVendor(new CreateVendorRequest(
                 "City Cafe", "owner@gmail.com", "Priya", 10,
-                null, "Bangalore", "+91 90000 00001", "+91 80000 00002"));
+                null, "Bangalore", "+91 90000 00001"));
 
         ArgumentCaptor<Vendor> captor = ArgumentCaptor.forClass(Vendor.class);
         verify(vendorRepository).save(captor.capture());
         assertThat(captor.getValue().getCity()).isEqualTo("Bangalore");
-        assertThat(captor.getValue().getPhone()).isEqualTo("+91 80000 00002");
+        assertThat(captor.getValue().getPhone()).isEqualTo("+91 90000 00001");
         assertThat(captor.getValue().getCampus()).isNull();
     }
 
@@ -95,7 +95,7 @@ class AdminServiceTest {
     void createVendor_generalVendor_missingCity_throws(String city) {
         when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
         var req = new CreateVendorRequest("City Cafe", "owner@gmail.com", "Priya", 10,
-                null, city, "+91 90000 00001", "+91 80000 00002");
+                null, city, "+91 90000 00001");
 
         assertThatThrownBy(() -> adminService.createVendor(req))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -115,7 +115,7 @@ class AdminServiceTest {
 
         adminService.createVendor(new CreateVendorRequest(
                 "Campus Stall", "owner@campus.edu", "Ramana", 15,
-                campusId, null, "+91 90000 00001", "+91 80000 00002"));
+                campusId, null, "+91 90000 00001"));
 
         ArgumentCaptor<Vendor> captor = ArgumentCaptor.forClass(Vendor.class);
         verify(vendorRepository).save(captor.capture());
@@ -128,7 +128,7 @@ class AdminServiceTest {
         when(userRepository.existsByEmail("owner@campus.edu")).thenReturn(false);
         when(campusRepository.findById(campusId)).thenReturn(Optional.empty());
         var req = new CreateVendorRequest("Campus Stall", "owner@campus.edu", "Ramana", 15,
-                campusId, null, "+91 90000 00001", "+91 80000 00002");
+                campusId, null, "+91 90000 00001");
 
         assertThatThrownBy(() -> adminService.createVendor(req))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -141,7 +141,7 @@ class AdminServiceTest {
     void createVendor_emailAlreadyRegistered_throws() {
         when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(true);
         var req = new CreateVendorRequest("City Cafe", "owner@gmail.com", "Priya", 10,
-                null, "Bangalore", "+91 90000 00001", "+91 80000 00002");
+                null, "Bangalore", "+91 90000 00001");
 
         assertThatThrownBy(() -> adminService.createVendor(req))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -158,7 +158,7 @@ class AdminServiceTest {
 
         adminService.createVendor(new CreateVendorRequest(
                 "City Cafe", "owner@gmail.com", "Priya", 10,
-                null, "Bangalore", "+91 90000 00001", "+91 80000 00002"));
+                null, "Bangalore", "+91 90000 00001"));
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
