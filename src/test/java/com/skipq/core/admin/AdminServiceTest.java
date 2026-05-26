@@ -18,6 +18,9 @@ import com.skipq.core.vendor.VendorRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -86,24 +89,13 @@ class AdminServiceTest {
         assertThat(captor.getValue().getCampus()).isNull();
     }
 
-    @Test
-    void createVendor_generalVendor_cityBlank_throws() {
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" "})
+    void createVendor_generalVendor_missingCity_throws(String city) {
         when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
         var req = new CreateVendorRequest("City Cafe", "owner@gmail.com", "Priya", 10,
-                null, "", "+91 90000 00001", "+91 80000 00002");
-
-        assertThatThrownBy(() -> adminService.createVendor(req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("City is required");
-
-        verify(vendorRepository, never()).save(any());
-    }
-
-    @Test
-    void createVendor_generalVendor_cityNull_throws() {
-        when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
-        var req = new CreateVendorRequest("City Cafe", "owner@gmail.com", "Priya", 10,
-                null, null, "+91 90000 00001", "+91 80000 00002");
+                null, city, "+91 90000 00001", "+91 80000 00002");
 
         assertThatThrownBy(() -> adminService.createVendor(req))
                 .isInstanceOf(IllegalArgumentException.class)
