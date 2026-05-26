@@ -4,9 +4,9 @@ spring:
     username: ${DEV_DB_USERNAME}
     password: ${DEV_DB_PASSWORD}
     hikari:
-      maximum-pool-size: 5
-      minimum-idle: 2
-      idle-timeout: 30000
+      maximum-pool-size: 2
+      minimum-idle: 0
+      idle-timeout: 10000
       connection-timeout: 20000
 
   jpa:
@@ -25,3 +25,8 @@ logging:
 
 swagger:
   enabled: true
+
+jobs:
+  scheduled-dispatch:
+    enabled: false
+    cron: "0 * 9-16 * * *"

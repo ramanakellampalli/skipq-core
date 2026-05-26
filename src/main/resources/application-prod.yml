@@ -30,3 +30,8 @@ logging:
   level:
     root: WARN
     com.skipq: INFO
+
+jobs:
+  scheduled-dispatch:
+    enabled: true
+    cron: "0 * 9-16 * * *"
