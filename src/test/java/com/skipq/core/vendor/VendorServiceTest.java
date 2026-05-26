@@ -80,7 +80,7 @@ class VendorServiceTest {
         Vendor cv = campusVendor("Campus Stall", true);
         Vendor gv = generalVendor("City Cafe");
 
-        when(vendorRepository.findAllByCampusOrderByIsOpenDesc(campus)).thenReturn(List.of(cv));
+        when(vendorRepository.findAllByCampusAndAccountStatusOrderByIsOpenDesc(campus, AccountStatus.ACTIVE)).thenReturn(List.of(cv));
         when(vendorRepository.findAllByCampusIsNullAndAccountStatusOrderByIsOpenDesc(AccountStatus.ACTIVE))
                 .thenReturn(List.of(gv));
 
@@ -94,7 +94,7 @@ class VendorServiceTest {
     void getVendorsByCampus_noGeneralVendors_returnsCampusOnly() {
         Vendor cv = campusVendor("Campus Stall", true);
 
-        when(vendorRepository.findAllByCampusOrderByIsOpenDesc(campus)).thenReturn(List.of(cv));
+        when(vendorRepository.findAllByCampusAndAccountStatusOrderByIsOpenDesc(campus, AccountStatus.ACTIVE)).thenReturn(List.of(cv));
         when(vendorRepository.findAllByCampusIsNullAndAccountStatusOrderByIsOpenDesc(AccountStatus.ACTIVE))
                 .thenReturn(List.of());
 
@@ -130,7 +130,7 @@ class VendorServiceTest {
     @Test
     void toResponse_withCampus_mapsCampusFields() {
         Vendor cv = campusVendor("Campus Stall", true);
-        when(vendorRepository.findAllByCampusOrderByIsOpenDesc(campus)).thenReturn(List.of(cv));
+        when(vendorRepository.findAllByCampusAndAccountStatusOrderByIsOpenDesc(campus, AccountStatus.ACTIVE)).thenReturn(List.of(cv));
         when(vendorRepository.findAllByCampusIsNullAndAccountStatusOrderByIsOpenDesc(AccountStatus.ACTIVE))
                 .thenReturn(List.of());
 
