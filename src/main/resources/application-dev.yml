@@ -29,4 +29,3 @@ swagger:
 jobs:
   scheduled-dispatch:
     enabled: false
-    cron: "0 * 9-16 * * *"
