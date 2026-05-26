@@ -65,20 +65,29 @@ public class AdminService {
             throw new IllegalArgumentException("Email already registered: " + request.email());
         }
 
-        Campus campus = campusRepository.findById(request.campusId())
-                .orElseThrow(() -> new IllegalArgumentException("Campus not found: " + request.campusId()));
+        if (request.campusId() == null && (request.city() == null || request.city().isBlank())) {
+            throw new IllegalArgumentException("City is required for general vendors");
+        }
+
+        Campus campus = request.campusId() != null
+                ? campusRepository.findById(request.campusId())
+                        .orElseThrow(() -> new IllegalArgumentException("Campus not found: " + request.campusId()))
+                : null;
 
         User user;
         Vendor.VendorBuilder vendorBuilder = Vendor.builder()
                 .campus(campus)
                 .name(request.vendorName())
                 .isOpen(false)
-                .prepTime(request.defaultPrepTime());
+                .prepTime(request.defaultPrepTime())
+                .city(request.city())
+                .phone(request.contactPhone());
 
         if (bypass) {
             user = User.builder()
                     .name(request.ownerName())
                     .email(request.email())
+                    .phone(request.ownerPhone())
                     .role(UserRole.VENDOR)
                     .passwordHash(passwordEncoder.encode(DEV_VENDOR_PASSWORD))
                     .emailVerified(true)
@@ -99,6 +108,7 @@ public class AdminService {
             user = User.builder()
                     .name(request.ownerName())
                     .email(request.email())
+                    .phone(request.ownerPhone())
                     .role(UserRole.VENDOR)
                     .setupToken(setupToken)
                     .setupTokenExpiresAt(LocalDateTime.now().plusHours(24))
@@ -124,8 +134,10 @@ public class AdminService {
         List<VendorResponse> vendors = vendorRepository.findAll().stream()
                 .map(v -> new VendorResponse(v.getId(), v.getName(), v.isOpen(), v.getPrepTime(),
                         v.getBusinessName(), v.isGstRegistered(), v.getGstin(), v.isKycApproved(),
-                        v.getCampus().getId(), v.getCampus().getName(),
-                        v.getAccountStatus(), v.getSuspensionNote(), v.getLogoUrl()))
+                        v.getCampus() != null ? v.getCampus().getId() : null,
+                        v.getCampus() != null ? v.getCampus().getName() : null,
+                        v.getAccountStatus(), v.getSuspensionNote(), v.getLogoUrl(),
+                        v.getCity(), v.getPhone()))
                 .toList();
 
         List<OrderResponse> orders = orderRepository.findTodaysOrdersWithItems().stream()

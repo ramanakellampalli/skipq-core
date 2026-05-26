@@ -12,5 +12,8 @@ public record CreateVendorRequest(
         @NotBlank @Email String email,
         @NotBlank String ownerName,
         @NotNull @Min(1) Integer defaultPrepTime,
-        @NotNull UUID campusId
+        UUID campusId,          // nullable — null means general vendor
+        String city,            // required when campusId is null
+        @NotBlank String ownerPhone,    // stored on users.phone
+        @NotBlank String contactPhone   // stored on vendors.phone, shown to customers
 ) {}

@@ -11,12 +11,15 @@ import java.util.UUID;
 
 public record OrderResponse(
         UUID id,
+        CustomerInfo customer,
         VendorInfo vendor,
         OrderState state,
         Pricing pricing,
         Timeline timeline,
         List<OrderItemResponse> items
 ) {
+    public record CustomerInfo(String name, String phone) {}
+
     public record VendorInfo(UUID id, String name) {}
 
     public record OrderState(OrderStatus orderStatus, PaymentStatus paymentStatus) {}

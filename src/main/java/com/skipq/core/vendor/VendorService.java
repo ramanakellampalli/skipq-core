@@ -1,6 +1,7 @@
 package com.skipq.core.vendor;
 
 import com.skipq.core.auth.UserRepository;
+import com.skipq.core.common.AccountStatus;
 import com.skipq.core.common.OrderStatus;
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.MenuItemService;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -86,7 +88,15 @@ public class VendorService {
     }
 
     public List<VendorResponse> getVendorsByCampus(com.skipq.core.campus.Campus campus) {
-        return vendorRepository.findAllByCampusOrderByIsOpenDesc(campus).stream().map(this::toResponse).toList();
+        var campusVendors = vendorRepository.findAllByCampusOrderByIsOpenDesc(campus);
+        var generalVendors = vendorRepository.findAllByCampusIsNullAndAccountStatusOrderByIsOpenDesc(AccountStatus.ACTIVE);
+        return Stream.concat(campusVendors.stream(), generalVendors.stream())
+                .map(this::toResponse).toList();
+    }
+
+    public List<VendorResponse> getGeneralVendors() {
+        return vendorRepository.findAllByCampusIsNullAndAccountStatusOrderByIsOpenDesc(AccountStatus.ACTIVE)
+                .stream().map(this::toResponse).toList();
     }
 
     public VendorResponse getById(UUID vendorId) {
@@ -112,9 +122,12 @@ public class VendorService {
     }
 
     private VendorResponse toResponse(Vendor vendor) {
+        var campus = vendor.getCampus();
         return new VendorResponse(vendor.getId(), vendor.getName(), vendor.isOpen(), vendor.getPrepTime(),
                 vendor.getBusinessName(), vendor.isGstRegistered(), vendor.getGstin(), vendor.isKycApproved(),
-                vendor.getCampus().getId(), vendor.getCampus().getName(),
-                vendor.getAccountStatus(), vendor.getSuspensionNote(), vendor.getLogoUrl());
+                campus != null ? campus.getId() : null,
+                campus != null ? campus.getName() : null,
+                vendor.getAccountStatus(), vendor.getSuspensionNote(), vendor.getLogoUrl(),
+                vendor.getCity(), vendor.getPhone());
     }
 }

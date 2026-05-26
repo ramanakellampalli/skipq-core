@@ -74,6 +74,12 @@ public class Vendor {
     @Column(name = "suspension_note", columnDefinition = "TEXT")
     private String suspensionNote;
 
+    @Column(name = "city", length = 100)
+    private String city;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
+
     @Column(name = "logo_url", length = 512)
     private String logoUrl;
 

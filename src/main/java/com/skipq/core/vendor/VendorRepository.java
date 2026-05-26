@@ -19,6 +19,8 @@ public interface VendorRepository extends JpaRepository<Vendor, UUID> {
 
     List<Vendor> findAllByCampusOrderByIsOpenDesc(Campus campus);
 
+    List<Vendor> findAllByCampusIsNullAndAccountStatusOrderByIsOpenDesc(AccountStatus accountStatus);
+
     long countByIsOpenTrue();
 
     Optional<Vendor> findByUserId(UUID userId);

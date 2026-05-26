@@ -58,12 +58,13 @@ public class StudentService {
                 student.getEmail(),
                 campus != null ? campus.getId() : null,
                 campus != null ? campus.getName() : null,
-                student.getAvatarUrl()
+                student.getAvatarUrl(),
+                student.getPhone()
         );
 
         List<VendorResponse> vendors = campus != null
                 ? vendorService.getVendorsByCampus(campus)
-                : vendorService.getAllVendors();
+                : vendorService.getGeneralVendors();
 
         List<Order> orders = orderRepository.findAllByUserIdWithItems(userId);
 
