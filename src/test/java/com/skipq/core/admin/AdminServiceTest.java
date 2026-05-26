@@ -26,6 +26,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -170,6 +171,42 @@ class AdminServiceTest {
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
         assertThat(captor.getValue().getPhone()).isEqualTo("+91 90000 00001");
+    }
+
+    // --- sync ---
+
+    @Test
+    void sync_mapsGeneralVendorWithNullCampus() {
+        Vendor generalVendor = Vendor.builder()
+                .id(UUID.randomUUID())
+                .user(User.builder().id(UUID.randomUUID()).email("v@gmail.com").role(UserRole.VENDOR).build())
+                .name("City Cafe")
+                .campus(null)
+                .city("Bangalore")
+                .phone("+91 80000 00002")
+                .accountStatus(AccountStatus.ACTIVE)
+                .build();
+
+        com.skipq.core.order.dto.OrderStatsProjection projection =
+                mock(com.skipq.core.order.dto.OrderStatsProjection.class);
+        when(projection.getTotalOrders()).thenReturn(0L);
+        when(projection.getRevenue()).thenReturn(java.math.BigDecimal.ZERO);
+        when(projection.getInProgress()).thenReturn(0L);
+
+        when(campusRepository.findAll()).thenReturn(List.of());
+        when(vendorRepository.findAll()).thenReturn(List.of(generalVendor));
+        when(orderRepository.findTodaysOrdersWithItems()).thenReturn(List.of());
+        when(orderRepository.getTodayStats()).thenReturn(projection);
+        when(vendorRepository.countByIsOpenTrue()).thenReturn(0L);
+        when(serviceRequestService.findAll()).thenReturn(List.of());
+
+        var response = adminService.sync();
+
+        assertThat(response.vendors()).hasSize(1);
+        assertThat(response.vendors().get(0).campusId()).isNull();
+        assertThat(response.vendors().get(0).campusName()).isNull();
+        assertThat(response.vendors().get(0).city()).isEqualTo("Bangalore");
+        assertThat(response.vendors().get(0).phone()).isEqualTo("+91 80000 00002");
     }
 
     // --- updateVendorStatus ---

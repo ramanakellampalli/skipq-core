@@ -81,7 +81,8 @@ public class OrderService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Vendor is currently closed");
         }
 
-        if (user.getCampus() != null && vendor.getCampus() != null && !user.getCampus().getId().equals(vendor.getCampus().getId())) {
+        if (vendor.getCampus() != null &&
+                (user.getCampus() == null || !user.getCampus().getId().equals(vendor.getCampus().getId()))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This vendor does not serve your campus");
         }
 

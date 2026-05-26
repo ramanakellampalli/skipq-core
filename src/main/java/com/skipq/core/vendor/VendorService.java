@@ -88,7 +88,7 @@ public class VendorService {
     }
 
     public List<VendorResponse> getVendorsByCampus(com.skipq.core.campus.Campus campus) {
-        var campusVendors = vendorRepository.findAllByCampusOrderByIsOpenDesc(campus);
+        var campusVendors = vendorRepository.findAllByCampusAndAccountStatusOrderByIsOpenDesc(campus, AccountStatus.ACTIVE);
         var generalVendors = vendorRepository.findAllByCampusIsNullAndAccountStatusOrderByIsOpenDesc(AccountStatus.ACTIVE);
         return Stream.concat(campusVendors.stream(), generalVendors.stream())
                 .map(this::toResponse).toList();
