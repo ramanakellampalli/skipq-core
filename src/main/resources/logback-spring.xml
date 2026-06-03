@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
 
     <springProperty scope="context" name="activeProfile" source="spring.profiles.active" defaultValue="unknown"/>
 
@@ -19,7 +20,7 @@
     <springProfile name="dev,prod">
 
         <conversionRule conversionWord="gcpSeverity"
-                        converterClass="com.skipq.core.logging.CloudSeverityConverter"/>
+                        class="com.skipq.core.logging.CloudSeverityConverter"/>
 
         <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
@@ -56,6 +57,8 @@
             <appender-ref ref="JSON"/>
         </root>
         <logger name="com.skipq" level="INFO"/>
+        <logger name="org.springframework.security.config" level="ERROR"/>
+        <logger name="com.zaxxer.hikari" level="WARN"/>
 
     </springProfile>
 
