@@ -1,13 +1,7 @@
-name: Deploy to Cloud Run (prod)
+name: Deploy to Oracle VM (prod)
 
 on:
   workflow_dispatch:
-
-env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: asia-south1
-  SERVICE: skipq-core
-  IMAGE: asia-south1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/skipq-core/skipq-core
 
 jobs:
   deploy:
@@ -29,39 +23,47 @@ jobs:
 
       - name: Run database migrations
         env:
-          FLYWAY_URL: ${{ secrets.PROD_MIGRATE_DB_URL }}
-          FLYWAY_USER: ${{ secrets.PROD_MIGRATE_DB_USERNAME }}
-          FLYWAY_PASSWORD: ${{ secrets.PROD_MIGRATE_DB_PASSWORD }}
+          FLYWAY_URL: ${{ secrets.PROD_DB_URL }}
+          FLYWAY_USER: ${{ secrets.PROD_DB_USERNAME }}
+          FLYWAY_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
         run: mvn flyway:migrate
 
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
-
-      - name: Build and push Docker image
+      - name: Set up SSH key
         run: |
-          docker build -t $IMAGE:$GITHUB_SHA -t $IMAGE:latest .
-          docker push $IMAGE:$GITHUB_SHA
-          docker push $IMAGE:latest
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ORACLE_PROD_SSH_KEY }}" > ~/.ssh/oracle-prod.key
+          chmod 600 ~/.ssh/oracle-prod.key
+          ssh-keyscan -H ${{ secrets.ORACLE_PROD_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to Cloud Run (prod)
+      - name: Copy JAR to VM
         run: |
-          gcloud run deploy $SERVICE \
-            --image $IMAGE:$GITHUB_SHA \
-            --region $REGION \
-            --platform managed \
-            --allow-unauthenticated \
-            --memory 512Mi \
-            --cpu 1 \
-            --min-instances 0 \
-            --max-instances 2 \
-            --port 8080 \
-            --set-env-vars "SPRING_PROFILES_ACTIVE=prod,R2_BUCKET_NAME=skipq-images,R2_PUBLIC_URL=https://pub-1a1d55258a2b4bd5affe723c3fed4dcd.r2.dev,FIREBASE_PROJECT_ID=skipq-0521" \
-            --set-secrets "JWT_SECRET=JWT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,RESEND_FROM_EMAIL=RESEND_FROM_EMAIL:latest,DEEP_LINK_BASE_URL=DEEP_LINK_BASE_URL:latest,PROD_DB_URL=PROD_DB_URL:latest,PROD_DB_USERNAME=PROD_DB_USERNAME:latest,PROD_DB_PASSWORD=PROD_DB_PASSWORD:latest,ABLY_API_KEY=ABLY_API_KEY:latest,RAZOR_TEST_ID=RAZOR_TEST_ID:latest,RAZOR_TEST_SECRET=RAZOR_TEST_SECRET:latest,RAZOR_WEBHOOK_SECRET=RAZOR_WEBHOOK_SECRET:latest,R2_ACCOUNT_ID=R2_ACCOUNT_ID:latest,R2_ACCESS_KEY_ID=R2_ACCESS_KEY_ID:latest,R2_SECRET_ACCESS_KEY=R2_SECRET_ACCESS_KEY:latest"
+          scp -i ~/.ssh/oracle-prod.key \
+            target/skipq-core-0.0.1-SNAPSHOT.jar \
+            ubuntu@${{ secrets.ORACLE_PROD_HOST }}:/home/ubuntu/skipq/skipq-core.jar
+
+      - name: Write env file and restart service
+        run: |
+          ssh -i ~/.ssh/oracle-prod.key ubuntu@${{ secrets.ORACLE_PROD_HOST }} << 'EOF'
+          cat > /home/ubuntu/skipq/.env << ENVEOF
+          SPRING_PROFILES_ACTIVE=prod
+          PROD_DB_URL=${{ secrets.PROD_DB_URL }}
+          PROD_DB_USERNAME=${{ secrets.PROD_DB_USERNAME }}
+          PROD_DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}
+          DEEP_LINK_BASE_URL=${{ secrets.DEEP_LINK_BASE_URL }}
+          ABLY_API_KEY=${{ secrets.ABLY_API_KEY }}
+          RAZOR_TEST_ID=${{ secrets.RAZOR_TEST_ID }}
+          RAZOR_TEST_SECRET=${{ secrets.RAZOR_TEST_SECRET }}
+          RAZOR_WEBHOOK_SECRET=${{ secrets.RAZOR_WEBHOOK_SECRET }}
+          R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME=skipq-images
+          R2_PUBLIC_URL=https://pub-1a1d55258a2b4bd5affe723c3fed4dcd.r2.dev
+          FIREBASE_PROJECT_ID=skipq-0521
+          GOOGLE_APPLICATION_CREDENTIALS=/home/ubuntu/skipq/firebase-service-account.json
+          ENVEOF
+          sudo systemctl restart skipq-core
+          EOF
