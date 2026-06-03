@@ -23,9 +23,9 @@ jobs:
 
       - name: Run database migrations
         env:
-          FLYWAY_URL: ${{ secrets.PROD_MIGRATE_DB_URL }}
-          FLYWAY_USER: ${{ secrets.PROD_MIGRATE_DB_USERNAME }}
-          FLYWAY_PASSWORD: ${{ secrets.PROD_MIGRATE_DB_PASSWORD }}
+          FLYWAY_URL: ${{ secrets.PROD_DB_URL }}
+          FLYWAY_USER: ${{ secrets.PROD_DB_USERNAME }}
+          FLYWAY_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
         run: mvn flyway:migrate
 
       - name: Set up SSH key
