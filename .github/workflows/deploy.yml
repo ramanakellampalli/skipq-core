@@ -56,7 +56,7 @@ jobs:
           ABLY_API_KEY=${{ secrets.ABLY_API_KEY }}
           RAZOR_TEST_ID=${{ secrets.RAZOR_TEST_ID }}
           RAZOR_TEST_SECRET=${{ secrets.RAZOR_TEST_SECRET }}
-          RAZOR_WEBHOOK_SECRET=${{ secrets.RAZOR_WEBHOOK_SECRET }}
+          RAZOR_WEBHOOK_SECRET=${{ secrets.RAZOR_WEBHOOK_SECRET_PROD }}
           R2_ACCOUNT_ID=${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}
