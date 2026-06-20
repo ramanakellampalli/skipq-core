@@ -34,10 +34,8 @@ public class ProfileService {
     @Transactional
     public String uploadOwnVendorLogo(UUID userId, byte[] bytes, String contentType) {
         validate(bytes, contentType);
-        var vendor = vendorRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
-        String url = r2ImageService.uploadAvatar(vendor.getId(), bytes, contentType);
-        vendorRepository.updateLogoUrl(vendor.getId(), url);
+        String url = r2ImageService.uploadAvatar(userId, bytes, contentType);
+        vendorRepository.updateLogoUrlByUserId(userId, url);
         return url;
     }
 
