@@ -30,15 +30,22 @@ public class ProfileController {
 
         boolean isAdmin = userDetails.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        boolean isVendor = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_VENDOR"));
 
         if (vendorId != null && !isAdmin) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can upload on behalf of a vendor");
         }
 
         UUID callerId = UUID.fromString(userDetails.getUsername());
-        String url = vendorId != null
-                ? profileService.uploadVendorLogo(vendorId, file.getBytes(), file.getContentType())
-                : profileService.uploadAvatar(callerId, file.getBytes(), file.getContentType());
+        String url;
+        if (vendorId != null) {
+            url = profileService.uploadVendorLogo(vendorId, file.getBytes(), file.getContentType());
+        } else if (isVendor) {
+            url = profileService.uploadOwnVendorLogo(callerId, file.getBytes(), file.getContentType());
+        } else {
+            url = profileService.uploadAvatar(callerId, file.getBytes(), file.getContentType());
+        }
 
         return Map.of("url", url);
     }
