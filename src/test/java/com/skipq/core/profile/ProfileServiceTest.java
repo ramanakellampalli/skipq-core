@@ -103,4 +103,26 @@ class ProfileServiceTest {
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
         verifyNoInteractions(r2ImageService);
     }
+
+    @Test
+    void uploadOwnVendorLogo_uploadsAndUpdatesVendorByUserId() {
+        UUID userId = UUID.randomUUID();
+        String expectedUrl = "https://cdn/avatars/" + userId;
+        when(r2ImageService.uploadAvatar(userId, VALID_BYTES, JPEG)).thenReturn(expectedUrl);
+
+        String url = profileService.uploadOwnVendorLogo(userId, VALID_BYTES, JPEG);
+
+        assertThat(url).isEqualTo(expectedUrl);
+        verify(vendorRepository).updateLogoUrlByUserId(userId, expectedUrl);
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void uploadOwnVendorLogo_fileTooLarge_throws400() {
+        byte[] bigFile = new byte[6 * 1024 * 1024];
+        assertThatThrownBy(() -> profileService.uploadOwnVendorLogo(UUID.randomUUID(), bigFile, JPEG))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
+        verifyNoInteractions(r2ImageService);
+    }
 }
