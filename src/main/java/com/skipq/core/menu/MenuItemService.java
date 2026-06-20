@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -88,7 +89,18 @@ public class MenuItemService {
         if (req.price() != null)        item.setPrice(req.price());
 
         if (req.variants() != null) {
-            item.clearVariants();
+            // Variants referenced by any order cannot be hard-deleted (FK constraint on order_items).
+            // Soft-delete those by marking unavailable; safely remove the rest.
+            List<MenuVariant> toRemove = new ArrayList<>();
+            for (MenuVariant existing : item.getVariants()) {
+                if (orderItemRepository.existsByVariantId(existing.getId())) {
+                    existing.setAvailable(false);
+                } else {
+                    toRemove.add(existing);
+                }
+            }
+            toRemove.forEach(item::removeVariant);
+
             for (CreateMenuVariantRequest vReq : req.variants()) {
                 MenuVariant variant = MenuVariant.builder()
                         .menuItem(item)

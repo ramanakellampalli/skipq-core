@@ -265,6 +265,41 @@ class MenuItemServiceTest {
     }
 
     @Test
+    void updateItem_softDeletesVariantReferencedByOrder() {
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        MenuItem item = itemWithVariants(true, true);
+        UUID existingVariantId = item.getVariants().get(0).getId();
+        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
+        when(orderItemRepository.existsByVariantId(existingVariantId)).thenReturn(true);
+        when(menuItemRepository.save(item)).thenReturn(item);
+
+        CreateMenuVariantRequest newVariant = new CreateMenuVariantRequest("Large", BigDecimal.valueOf(120), 1);
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest(null, null, null, null, null, null, null, List.of(newVariant));
+        menuItemService.updateItem(userId, item.getId(), req);
+
+        MenuVariant original = item.getVariants().stream()
+                .filter(v -> v.getId().equals(existingVariantId))
+                .findFirst().orElseThrow();
+        assertThat(original.isAvailable()).isFalse();
+        assertThat(item.getVariants()).hasSize(2);
+    }
+
+    @Test
+    void updateItem_hardDeletesVariantNotReferencedByOrder() {
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
+        MenuItem item = itemWithVariants(true, true);
+        UUID existingVariantId = item.getVariants().get(0).getId();
+        when(menuItemRepository.findByIdAndVendorId(item.getId(), vendorId)).thenReturn(Optional.of(item));
+        when(orderItemRepository.existsByVariantId(existingVariantId)).thenReturn(false);
+        when(menuItemRepository.save(item)).thenReturn(item);
+
+        UpdateMenuItemRequest req = new UpdateMenuItemRequest(null, null, null, null, null, null, null, List.of());
+        menuItemService.updateItem(userId, item.getId(), req);
+
+        assertThat(item.getVariants()).isEmpty();
+    }
+
+    @Test
     void updateItem_throwsWhenNotFound() {
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
         UUID itemId = UUID.randomUUID();

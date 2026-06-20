@@ -69,6 +69,10 @@ public class MenuItem {
         variants.clear();
     }
 
+    public void removeVariant(MenuVariant variant) {
+        variants.remove(variant);
+    }
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
