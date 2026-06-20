@@ -14,6 +14,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,98 +31,65 @@ class ProfileServiceTest {
     private static final String JPEG = "image/jpeg";
 
     @Test
-    void uploadVendorLogo_uploadsAndUpdates() {
-        UUID vendorId = UUID.randomUUID();
-        String expectedUrl = "https://cdn/avatars/" + vendorId;
-        when(r2ImageService.uploadAvatar(vendorId, VALID_BYTES, JPEG)).thenReturn(expectedUrl);
+    void upload_vendorType_updatesVendorLogoUrl() {
+        UUID id = UUID.randomUUID();
+        when(r2ImageService.uploadAvatar(id, VALID_BYTES, JPEG)).thenReturn("https://cdn/" + id);
 
-        String url = profileService.uploadVendorLogo(vendorId, VALID_BYTES, JPEG);
+        String url = profileService.upload(id, VALID_BYTES, JPEG, "VENDOR");
 
-        assertThat(url).isEqualTo(expectedUrl);
-        verify(vendorRepository).updateLogoUrl(vendorId, expectedUrl);
+        assertThat(url).isEqualTo("https://cdn/" + id);
+        verify(vendorRepository).updateLogoUrl(id, url);
         verifyNoInteractions(userRepository);
     }
 
     @Test
-    void uploadAvatar_uploadsAndUpdates() {
-        UUID userId = UUID.randomUUID();
-        String expectedUrl = "https://cdn/avatars/" + userId;
-        when(r2ImageService.uploadAvatar(userId, VALID_BYTES, JPEG)).thenReturn(expectedUrl);
+    void upload_userType_updatesUserAvatarUrl() {
+        UUID id = UUID.randomUUID();
+        when(r2ImageService.uploadAvatar(id, VALID_BYTES, JPEG)).thenReturn("https://cdn/" + id);
 
-        String url = profileService.uploadAvatar(userId, VALID_BYTES, JPEG);
+        String url = profileService.upload(id, VALID_BYTES, JPEG, "USER");
 
-        assertThat(url).isEqualTo(expectedUrl);
-        verify(userRepository).updateAvatarUrl(userId, expectedUrl);
+        assertThat(url).isEqualTo("https://cdn/" + id);
+        verify(userRepository).updateAvatarUrl(id, url);
         verifyNoInteractions(vendorRepository);
     }
 
     @Test
-    void uploadVendorLogo_pngAccepted() {
-        UUID vendorId = UUID.randomUUID();
-        when(r2ImageService.uploadAvatar(any(), any(), eq("image/png"))).thenReturn("https://cdn/avatars/" + vendorId);
+    void upload_pngAccepted() {
+        UUID id = UUID.randomUUID();
+        when(r2ImageService.uploadAvatar(any(), any(), eq("image/png"))).thenReturn("https://cdn/" + id);
 
-        assertThat(profileService.uploadVendorLogo(vendorId, VALID_BYTES, "image/png")).isNotNull();
+        assertThat(profileService.upload(id, VALID_BYTES, "image/png", "USER")).isNotNull();
     }
 
     @Test
-    void uploadVendorLogo_webpAccepted() {
-        UUID vendorId = UUID.randomUUID();
-        when(r2ImageService.uploadAvatar(any(), any(), eq("image/webp"))).thenReturn("https://cdn/avatars/" + vendorId);
+    void upload_webpAccepted() {
+        UUID id = UUID.randomUUID();
+        when(r2ImageService.uploadAvatar(any(), any(), eq("image/webp"))).thenReturn("https://cdn/" + id);
 
-        assertThat(profileService.uploadVendorLogo(vendorId, VALID_BYTES, "image/webp")).isNotNull();
+        assertThat(profileService.upload(id, VALID_BYTES, "image/webp", "USER")).isNotNull();
     }
 
     @Test
-    void uploadVendorLogo_nullContentType_throws400() {
-        assertThatThrownBy(() -> profileService.uploadVendorLogo(UUID.randomUUID(), VALID_BYTES, null))
+    void upload_nullContentType_throws400() {
+        assertThatThrownBy(() -> profileService.upload(UUID.randomUUID(), VALID_BYTES, null, "USER"))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
         verifyNoInteractions(r2ImageService);
     }
 
     @Test
-    void uploadVendorLogo_unsupportedType_throws400() {
-        assertThatThrownBy(() -> profileService.uploadVendorLogo(UUID.randomUUID(), VALID_BYTES, "application/pdf"))
+    void upload_unsupportedType_throws400() {
+        assertThatThrownBy(() -> profileService.upload(UUID.randomUUID(), VALID_BYTES, "application/pdf", "USER"))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
         verifyNoInteractions(r2ImageService);
     }
 
     @Test
-    void uploadVendorLogo_fileTooLarge_throws400() {
+    void upload_fileTooLarge_throws400() {
         byte[] bigFile = new byte[6 * 1024 * 1024];
-        assertThatThrownBy(() -> profileService.uploadVendorLogo(UUID.randomUUID(), bigFile, JPEG))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
-        verifyNoInteractions(r2ImageService);
-    }
-
-    @Test
-    void uploadAvatar_fileTooLarge_throws400() {
-        byte[] bigFile = new byte[6 * 1024 * 1024];
-        assertThatThrownBy(() -> profileService.uploadAvatar(UUID.randomUUID(), bigFile, JPEG))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
-        verifyNoInteractions(r2ImageService);
-    }
-
-    @Test
-    void uploadOwnVendorLogo_uploadsAndUpdatesVendorByUserId() {
-        UUID userId = UUID.randomUUID();
-        String expectedUrl = "https://cdn/avatars/" + userId;
-        when(r2ImageService.uploadAvatar(userId, VALID_BYTES, JPEG)).thenReturn(expectedUrl);
-
-        String url = profileService.uploadOwnVendorLogo(userId, VALID_BYTES, JPEG);
-
-        assertThat(url).isEqualTo(expectedUrl);
-        verify(vendorRepository).updateLogoUrlByUserId(userId, expectedUrl);
-        verifyNoInteractions(userRepository);
-    }
-
-    @Test
-    void uploadOwnVendorLogo_fileTooLarge_throws400() {
-        byte[] bigFile = new byte[6 * 1024 * 1024];
-        assertThatThrownBy(() -> profileService.uploadOwnVendorLogo(UUID.randomUUID(), bigFile, JPEG))
+        assertThatThrownBy(() -> profileService.upload(UUID.randomUUID(), bigFile, JPEG, "USER"))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
         verifyNoInteractions(r2ImageService);

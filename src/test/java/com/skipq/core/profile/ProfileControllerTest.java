@@ -5,19 +5,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -29,48 +22,29 @@ class ProfileControllerTest {
     @Mock ProfileService profileService;
     @InjectMocks ProfileController controller;
 
-    private UserDetails vendorUser(UUID id) {
-        return new User(id.toString(), "", List.of(new SimpleGrantedAuthority("ROLE_VENDOR")));
-    }
-
-    private UserDetails adminUser(UUID id) {
-        return new User(id.toString(), "", List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
-    }
-
     private MockMultipartFile jpeg() {
         return new MockMultipartFile("file", "logo.jpg", "image/jpeg", new byte[100]);
     }
 
     @Test
-    void uploadAvatar_vendorSelfUpload_callsUploadOwnVendorLogo() throws Exception {
-        UUID userId = UUID.randomUUID();
-        when(profileService.uploadOwnVendorLogo(eq(userId), any(), any())).thenReturn("https://cdn/avatars/" + userId);
+    void upload_vendorType_callsUploadWithVendorType() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(profileService.upload(eq(id), any(), any(), eq("VENDOR"))).thenReturn("https://cdn/" + id);
 
-        Map<String, String> result = controller.uploadAvatar(vendorUser(userId), jpeg(), null);
+        Map<String, String> result = controller.uploadAvatar(jpeg(), id, "VENDOR");
 
-        assertThat(result.get("url")).isEqualTo("https://cdn/avatars/" + userId);
-        verify(profileService).uploadOwnVendorLogo(eq(userId), any(), eq("image/jpeg"));
+        assertThat(result.get("url")).isEqualTo("https://cdn/" + id);
+        verify(profileService).upload(eq(id), any(), eq("image/jpeg"), eq("VENDOR"));
     }
 
     @Test
-    void uploadAvatar_adminUploadsForVendor_callsUploadVendorLogo() throws Exception {
-        UUID adminId = UUID.randomUUID();
-        UUID vendorId = UUID.randomUUID();
-        when(profileService.uploadVendorLogo(eq(vendorId), any(), any())).thenReturn("https://cdn/avatars/" + vendorId);
+    void upload_userType_callsUploadWithUserType() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(profileService.upload(eq(id), any(), any(), eq("USER"))).thenReturn("https://cdn/" + id);
 
-        Map<String, String> result = controller.uploadAvatar(adminUser(adminId), jpeg(), vendorId);
+        Map<String, String> result = controller.uploadAvatar(jpeg(), id, "USER");
 
-        assertThat(result.get("url")).isEqualTo("https://cdn/avatars/" + vendorId);
-        verify(profileService).uploadVendorLogo(eq(vendorId), any(), eq("image/jpeg"));
-    }
-
-    @Test
-    void uploadAvatar_nonAdminPassesVendorId_throws403() {
-        UUID userId = UUID.randomUUID();
-
-        assertThatThrownBy(() -> controller.uploadAvatar(vendorUser(userId), jpeg(), UUID.randomUUID()))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value())
-                        .isEqualTo(HttpStatus.FORBIDDEN.value()));
+        assertThat(result.get("url")).isEqualTo("https://cdn/" + id);
+        verify(profileService).upload(eq(id), any(), eq("image/jpeg"), eq("USER"));
     }
 }

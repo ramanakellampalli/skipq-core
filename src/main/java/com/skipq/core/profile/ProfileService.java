@@ -24,26 +24,14 @@ public class ProfileService {
     private final R2ImageService r2ImageService;
 
     @Transactional
-    public String uploadVendorLogo(UUID vendorId, byte[] bytes, String contentType) {
+    public String upload(UUID id, byte[] bytes, String contentType, String type) {
         validate(bytes, contentType);
-        String url = r2ImageService.uploadAvatar(vendorId, bytes, contentType);
-        vendorRepository.updateLogoUrl(vendorId, url);
-        return url;
-    }
-
-    @Transactional
-    public String uploadOwnVendorLogo(UUID userId, byte[] bytes, String contentType) {
-        validate(bytes, contentType);
-        String url = r2ImageService.uploadAvatar(userId, bytes, contentType);
-        vendorRepository.updateLogoUrlByUserId(userId, url);
-        return url;
-    }
-
-    @Transactional
-    public String uploadAvatar(UUID userId, byte[] bytes, String contentType) {
-        validate(bytes, contentType);
-        String url = r2ImageService.uploadAvatar(userId, bytes, contentType);
-        userRepository.updateAvatarUrl(userId, url);
+        String url = r2ImageService.uploadAvatar(id, bytes, contentType);
+        if ("VENDOR".equals(type)) {
+            vendorRepository.updateLogoUrl(id, url);
+        } else {
+            userRepository.updateAvatarUrl(id, url);
+        }
         return url;
     }
 

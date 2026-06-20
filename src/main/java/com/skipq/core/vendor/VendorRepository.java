@@ -32,8 +32,4 @@ public interface VendorRepository extends JpaRepository<Vendor, UUID> {
     @Modifying
     @Query("UPDATE Vendor v SET v.logoUrl = :logoUrl WHERE v.id = :vendorId")
     void updateLogoUrl(@Param("vendorId") UUID vendorId, @Param("logoUrl") String logoUrl);
-
-    @Modifying
-    @Query("UPDATE Vendor v SET v.logoUrl = :logoUrl WHERE v.user.id = :userId")
-    void updateLogoUrlByUserId(@Param("userId") UUID userId, @Param("logoUrl") String logoUrl);
 }
