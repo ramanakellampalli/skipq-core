@@ -34,6 +34,11 @@ logging:
     root: WARN
     com.skipq: INFO
 
+razorpay:
+  key-id: ${RAZOR_PROD_ID}
+  key-secret: ${RAZOR_PROD_SECRET}
+  webhook-secret: ${RAZOR_WEBHOOK_SECRET_PROD}
+
 jobs:
   scheduled-dispatch:
     enabled: true
