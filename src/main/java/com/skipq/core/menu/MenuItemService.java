@@ -89,7 +89,7 @@ public class MenuItemService {
         if (req.price() != null)        item.setPrice(req.price());
 
         if (req.variants() != null) {
-            // Variants referenced by past orders cannot be hard-deleted (FK constraint).
+            // Variants referenced by any order cannot be hard-deleted (FK constraint on order_items).
             // Soft-delete those by marking unavailable; safely remove the rest.
             List<MenuVariant> toRemove = new ArrayList<>();
             for (MenuVariant existing : item.getVariants()) {
