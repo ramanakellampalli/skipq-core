@@ -12,4 +12,6 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, UUID> {
     void deleteAllByOrderIn(List<Order> orders);
 
     boolean existsByMenuItemId(UUID menuItemId);
+
+    boolean existsByVariantId(UUID variantId);
 }
