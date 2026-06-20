@@ -42,14 +42,14 @@ class ProfileControllerTest {
     }
 
     @Test
-    void uploadAvatar_selfUpload_callsUploadAvatar() throws Exception {
+    void uploadAvatar_vendorSelfUpload_callsUploadOwnVendorLogo() throws Exception {
         UUID userId = UUID.randomUUID();
-        when(profileService.uploadAvatar(eq(userId), any(), any())).thenReturn("https://cdn/avatars/" + userId);
+        when(profileService.uploadOwnVendorLogo(eq(userId), any(), any())).thenReturn("https://cdn/avatars/" + userId);
 
         Map<String, String> result = controller.uploadAvatar(vendorUser(userId), jpeg(), null);
 
         assertThat(result.get("url")).isEqualTo("https://cdn/avatars/" + userId);
-        verify(profileService).uploadAvatar(eq(userId), any(), eq("image/jpeg"));
+        verify(profileService).uploadOwnVendorLogo(eq(userId), any(), eq("image/jpeg"));
     }
 
     @Test
