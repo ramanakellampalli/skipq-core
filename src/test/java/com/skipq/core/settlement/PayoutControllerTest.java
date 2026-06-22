@@ -29,6 +29,7 @@ class PayoutControllerTest {
 
     @Mock VendorPayoutRepository vendorPayoutRepository;
     @Mock LedgerEntryRepository ledgerEntryRepository;
+    @Mock VendorLedgerRepository vendorLedgerRepository;
 
     @InjectMocks PayoutController payoutController;
 
@@ -84,6 +85,8 @@ class PayoutControllerTest {
         assertThat(result.payoutReference()).isEqualTo("UPI123456");
         verify(vendorPayoutRepository).save(pendingPayout);
         verify(ledgerEntryRepository).markSettled(eq(pendingPayout.getId()));
+        verify(vendorLedgerRepository).upsertBalance(
+                eq(vendor.getId()), eq(new BigDecimal("500.00").negate()));
     }
 
     @Test
@@ -101,7 +104,7 @@ class PayoutControllerTest {
     }
 
     @Test
-    void markFailed_updatesPayout_entriesRemainUnsettled() {
+    void markFailed_updatesPayout_releasesReservationForNextCycle() {
         when(vendorPayoutRepository.findById(pendingPayout.getId()))
                 .thenReturn(Optional.of(pendingPayout));
 
@@ -109,7 +112,8 @@ class PayoutControllerTest {
 
         assertThat(result.status()).isEqualTo(PayoutStatus.FAILED);
         verify(vendorPayoutRepository).save(pendingPayout);
-        verifyNoInteractions(ledgerEntryRepository);
+        verify(ledgerEntryRepository).releaseReservation(eq(pendingPayout.getId()));
+        verifyNoInteractions(vendorLedgerRepository);
     }
 
     @Test

@@ -52,4 +52,14 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, UUID> 
               AND le.settled = false
             """)
     void markSettled(@Param("payoutId") UUID payoutId);
+
+    // Release entries back to the unsettled pool when a payout is marked FAILED.
+    // Clears payout_id so the next settlement run picks them up under the new cutoff.
+    @Modifying
+    @Query("""
+            UPDATE LedgerEntry le
+            SET le.payoutId = null
+            WHERE le.payoutId = :payoutId
+            """)
+    void releaseReservation(@Param("payoutId") UUID payoutId);
 }

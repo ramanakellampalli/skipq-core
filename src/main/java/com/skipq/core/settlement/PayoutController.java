@@ -21,6 +21,7 @@ public class PayoutController {
 
     private final VendorPayoutRepository vendorPayoutRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
+    private final VendorLedgerRepository vendorLedgerRepository;
 
     @GetMapping
     public List<VendorPayoutResponse> listPayouts(
@@ -51,6 +52,7 @@ public class PayoutController {
         vendorPayoutRepository.save(payout);
 
         ledgerEntryRepository.markSettled(payout.getId());
+        vendorLedgerRepository.upsertBalance(payout.getVendor().getId(), payout.getAmount().negate());
 
         return VendorPayoutResponse.from(payout);
     }
@@ -72,6 +74,8 @@ public class PayoutController {
         payout.setStatus(PayoutStatus.FAILED);
         payout.setAdminNote(adminNote);
         vendorPayoutRepository.save(payout);
+
+        ledgerEntryRepository.releaseReservation(payout.getId());
 
         return VendorPayoutResponse.from(payout);
     }
