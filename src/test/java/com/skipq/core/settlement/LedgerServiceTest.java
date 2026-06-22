@@ -58,7 +58,7 @@ class LedgerServiceTest {
         assertThat(saved.getAmount()).isEqualByComparingTo("100.00"); // 103 - 3
         assertThat(saved.isSettled()).isFalse();
 
-        verify(vendorLedgerRepository).incrementBalance(eq(vendorId), eq(new BigDecimal("100.00")));
+        verify(vendorLedgerRepository).upsertBalance(eq(vendorId), eq(new BigDecimal("100.00")));
     }
 
     @Test
@@ -71,7 +71,7 @@ class LedgerServiceTest {
         ledgerService.creditVendor(order);
 
         verify(ledgerEntryRepository, never()).save(any());
-        verify(vendorLedgerRepository, never()).incrementBalance(any(), any());
+        verify(vendorLedgerRepository, never()).upsertBalance(any(), any());
     }
 
     @Test

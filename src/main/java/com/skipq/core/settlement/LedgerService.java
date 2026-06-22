@@ -37,7 +37,7 @@ public class LedgerService {
                 .type(LedgerEntryType.CREDIT)
                 .build());
 
-        vendorLedgerRepository.incrementBalance(vendorId, vendorShare);
+        vendorLedgerRepository.upsertBalance(vendorId, vendorShare);
 
         log.info("Ledger credit: order={} vendor={} amount={}", orderId, vendorId, vendorShare);
     }

@@ -14,24 +14,42 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, UUID> 
 
     boolean existsByOrderIdAndType(UUID orderId, LedgerEntryType type);
 
+    // Only considers entries not yet reserved for a payout (payout_id IS NULL).
+    // Prevents the same entries being counted in a duplicate payout run.
     @Query("""
             SELECT le.vendorId, SUM(le.amount)
             FROM LedgerEntry le
-            WHERE le.settled = false AND le.createdAt <= :cutoff
+            WHERE le.settled = false
+              AND le.payoutId IS NULL
+              AND le.createdAt <= :cutoff
             GROUP BY le.vendorId
             HAVING SUM(le.amount) > 0
             """)
     List<Object[]> sumUnsettledByVendorBeforeCutoff(@Param("cutoff") LocalDateTime cutoff);
 
+    // Reserve entries for a specific payout at job creation time.
+    // Entries remain settled=false until admin confirms the transfer.
     @Modifying
     @Query("""
             UPDATE LedgerEntry le
-            SET le.payoutId = :payoutId, le.settled = true
+            SET le.payoutId = :payoutId
             WHERE le.vendorId = :vendorId
               AND le.settled = false
+              AND le.payoutId IS NULL
               AND le.createdAt <= :cutoff
             """)
-    void markSettled(@Param("vendorId") UUID vendorId,
-                     @Param("payoutId") UUID payoutId,
-                     @Param("cutoff") LocalDateTime cutoff);
+    void reserveForPayout(@Param("vendorId") UUID vendorId,
+                          @Param("payoutId") UUID payoutId,
+                          @Param("cutoff") LocalDateTime cutoff);
+
+    // Mark entries settled using the payout linkage set at reservation time.
+    // Scoped to the specific payout — never touches another payout's entries.
+    @Modifying
+    @Query("""
+            UPDATE LedgerEntry le
+            SET le.settled = true
+            WHERE le.payoutId = :payoutId
+              AND le.settled = false
+            """)
+    void markSettled(@Param("payoutId") UUID payoutId);
 }

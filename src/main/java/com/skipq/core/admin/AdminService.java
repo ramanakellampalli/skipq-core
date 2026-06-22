@@ -15,6 +15,8 @@ import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.order.dto.OrderStatsProjection;
 import com.skipq.core.support.ServiceRequestService;
 import com.skipq.core.support.dto.AdminServiceRequestResponse;
+import com.skipq.core.settlement.VendorLedger;
+import com.skipq.core.settlement.VendorLedgerRepository;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import com.skipq.core.vendor.dto.VendorResponse;
@@ -44,6 +46,7 @@ public class AdminService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final ServiceRequestService serviceRequestService;
+    private final VendorLedgerRepository vendorLedgerRepository;
 
     @Value("${otp.bypass:false}")
     private boolean bypass;
@@ -122,7 +125,8 @@ public class AdminService {
                     request.vendorName(), user.getId(), campus != null ? campus.getName() : "general", request.email());
         }
 
-        vendorRepository.save(vendorBuilder.build());
+        Vendor vendor = vendorRepository.save(vendorBuilder.build());
+        vendorLedgerRepository.save(VendorLedger.builder().vendorId(vendor.getId()).build());
     }
 
     @Transactional(readOnly = true)

@@ -83,10 +83,7 @@ class PayoutControllerTest {
         assertThat(result.status()).isEqualTo(PayoutStatus.SUCCESS);
         assertThat(result.payoutReference()).isEqualTo("UPI123456");
         verify(vendorPayoutRepository).save(pendingPayout);
-        verify(ledgerEntryRepository).markSettled(
-                eq(vendor.getId()),
-                eq(pendingPayout.getId()),
-                eq(pendingPayout.getSettlementCutoffAt()));
+        verify(ledgerEntryRepository).markSettled(eq(pendingPayout.getId()));
     }
 
     @Test

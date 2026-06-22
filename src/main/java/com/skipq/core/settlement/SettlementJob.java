@@ -4,6 +4,7 @@ import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,9 +25,10 @@ public class SettlementJob {
     private final VendorRepository vendorRepository;
 
     @Scheduled(cron = "0 0 7 * * *")
+    @SchedulerLock(name = "daily_settlement_job", lockAtMostFor = "PT10M")
     @Transactional
     public void runDailySettlement() {
-        LocalDateTime cutoff = LocalDate.now().minusDays(1).atTime(23, 59, 59);
+        LocalDateTime cutoff        = LocalDate.now().minusDays(1).atTime(23, 59, 59);
         LocalDateTime settlementStart = LocalDate.now().minusDays(1).atStartOfDay();
 
         log.info("SettlementJob: running for cutoff={}", cutoff);
@@ -58,6 +60,11 @@ public class SettlementJob {
                     .build();
 
             vendorPayoutRepository.save(payout);
+
+            // Reserve entries immediately so a re-run cannot count them again.
+            // Entries remain settled=false until admin confirms the bank transfer.
+            ledgerEntryRepository.reserveForPayout(vendorId, payout.getId(), cutoff);
+
             created++;
             log.info("SettlementJob: created payout {} vendor={} amount={}", payout.getId(), vendor.getName(), amount);
         }

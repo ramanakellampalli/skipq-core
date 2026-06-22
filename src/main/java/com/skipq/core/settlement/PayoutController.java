@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -31,6 +32,7 @@ public class PayoutController {
     }
 
     @PutMapping("/{id}/success")
+    @Transactional
     public VendorPayoutResponse markSuccess(
             @PathVariable UUID id,
             @Valid @RequestBody MarkPayoutSuccessRequest request) {
@@ -48,15 +50,13 @@ public class PayoutController {
         payout.setAdminNote(request.adminNote());
         vendorPayoutRepository.save(payout);
 
-        ledgerEntryRepository.markSettled(
-                payout.getVendor().getId(),
-                payout.getId(),
-                payout.getSettlementCutoffAt());
+        ledgerEntryRepository.markSettled(payout.getId());
 
         return VendorPayoutResponse.from(payout);
     }
 
     @PutMapping("/{id}/failed")
+    @Transactional
     public VendorPayoutResponse markFailed(
             @PathVariable UUID id,
             @RequestParam(required = false) String adminNote) {

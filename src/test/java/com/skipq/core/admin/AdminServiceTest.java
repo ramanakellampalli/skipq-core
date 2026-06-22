@@ -12,6 +12,8 @@ import com.skipq.core.notification.EmailService;
 import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.config.RazorpayService;
+import com.skipq.core.settlement.VendorLedger;
+import com.skipq.core.settlement.VendorLedgerRepository;
 import com.skipq.core.support.ServiceRequestService;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
@@ -35,6 +37,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,6 +52,7 @@ class AdminServiceTest {
     @Mock PasswordEncoder passwordEncoder;
     @Mock RazorpayService razorpayService;
     @Mock ServiceRequestService serviceRequestService;
+    @Mock VendorLedgerRepository vendorLedgerRepository;
 
     @InjectMocks AdminService adminService;
 
@@ -68,6 +72,10 @@ class AdminServiceTest {
                 .name("Test Stall")
                 .accountStatus(AccountStatus.ACTIVE)
                 .build();
+
+        // vendorRepository.save() must return the entity so AdminService can read its ID
+        // to create the corresponding vendor_ledger row.
+        lenient().when(vendorRepository.save(any(Vendor.class))).thenReturn(vendor);
     }
 
     // --- createVendor ---

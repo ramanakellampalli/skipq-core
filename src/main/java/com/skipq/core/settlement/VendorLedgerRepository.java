@@ -10,12 +10,16 @@ import java.util.UUID;
 
 public interface VendorLedgerRepository extends JpaRepository<VendorLedger, UUID> {
 
+    // Upsert: creates the row if missing, increments if present.
+    // Defensive against a vendor_ledger row not existing (e.g. older vendors,
+    // or a race between vendor creation and first order completion).
     @Modifying
-    @Query("""
-            UPDATE VendorLedger vl
-            SET vl.availableBalance = vl.availableBalance + :amount,
-                vl.updatedAt = CURRENT_TIMESTAMP
-            WHERE vl.vendorId = :vendorId
-            """)
-    void incrementBalance(@Param("vendorId") UUID vendorId, @Param("amount") BigDecimal amount);
+    @Query(value = """
+            INSERT INTO vendor_ledger (vendor_id, available_balance, updated_at)
+            VALUES (:vendorId, :amount, now())
+            ON CONFLICT (vendor_id) DO UPDATE
+            SET available_balance = vendor_ledger.available_balance + EXCLUDED.available_balance,
+                updated_at = now()
+            """, nativeQuery = true)
+    void upsertBalance(@Param("vendorId") UUID vendorId, @Param("amount") BigDecimal amount);
 }
