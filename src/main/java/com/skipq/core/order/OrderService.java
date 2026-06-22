@@ -9,12 +9,12 @@ import com.skipq.core.common.PaymentStatus;
 import com.skipq.core.config.AblyService;
 import com.skipq.core.config.FcmService;
 import com.skipq.core.config.RazorpayService;
-import com.skipq.core.config.RazorpayTransferRequest;
 import com.skipq.core.menu.MenuItem;
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.MenuVariant;
 import com.skipq.core.menu.MenuVariantRepository;
 import com.skipq.core.order.dto.*;
+import com.skipq.core.settlement.LedgerService;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +54,7 @@ public class OrderService {
     private final AblyService ablyService;
     private final FcmService fcmService;
     private final RazorpayService razorpayService;
+    private final LedgerService ledgerService;
     private final OrderMapper orderMapper;
     private final OrderTransitionPolicy transitionPolicy;
 
@@ -303,8 +304,8 @@ public class OrderService {
         }
         orderRepository.save(order);
 
-        if (newStatus == OrderStatus.READY) {
-            fireVendorTransfer(order);
+        if (newStatus == OrderStatus.COMPLETED) {
+            ledgerService.creditVendor(order);
         }
 
         OrderResponse response = orderMapper.toResponse(order);
@@ -327,30 +328,6 @@ public class OrderService {
         if (scheduledPickupAt.isBefore(LocalDateTime.now().plusMinutes(minLeadMinutes))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Scheduled pickup must be at least " + minLeadMinutes + " minutes from now");
-        }
-    }
-
-    private void fireVendorTransfer(Order order) {
-        String linkedAccountId = order.getVendor().getRazorpayLinkedAccountId();
-        String paymentRef      = order.getPaymentRef();
-
-        if (linkedAccountId == null || paymentRef == null) {
-            log.warn("Skipping transfer for order {} — vendor has no linked account or paymentRef is null",
-                    order.getId());
-            return;
-        }
-
-        long vendorAmountPaise = order.getTotalAmount()
-                .subtract(order.getPlatformFee())
-                .multiply(BigDecimal.valueOf(100))
-                .longValue();
-
-        try {
-            razorpayService.transferToVendor(paymentRef,
-                    new RazorpayTransferRequest(linkedAccountId, vendorAmountPaise));
-        } catch (RazorpayException e) {
-            log.error("Razorpay transfer failed for order {} — funds remain in SkipQ account: {}",
-                    order.getId(), e.getMessage());
         }
     }
 
