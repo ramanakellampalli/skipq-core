@@ -84,7 +84,8 @@ public class AdminService {
                 .isOpen(false)
                 .prepTime(request.defaultPrepTime())
                 .city(request.city())
-                .phone(request.ownerPhone());
+                .phone(request.ownerPhone())
+                .kycApproved(true);
 
         if (bypass) {
             user = User.builder()
@@ -179,13 +180,4 @@ public class AdminService {
         log.info("Vendor {} status updated to {} by admin", vendorId, request.status());
     }
 
-    @Transactional
-    public void approveKyc(UUID vendorId) {
-        Vendor vendor = vendorRepository.findById(vendorId)
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "Vendor not found"));
-        vendor.setKycApproved(true);
-        vendorRepository.save(vendor);
-        log.info("KYC approved for vendor {} by admin", vendorId);
-    }
 }
