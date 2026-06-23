@@ -108,7 +108,7 @@ class AdminServiceTest {
     }
 
     @Test
-    void createVendor_bypass_savesKycFields() {
+    void createVendor_bypass_savesKycFieldsAndAutoApprovesKyc() {
         ReflectionTestUtils.setField(adminService, "bypass", true);
         when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
         when(passwordEncoder.encode(any())).thenReturn("hashed");
@@ -124,6 +124,7 @@ class AdminServiceTest {
         assertThat(saved.getIfsc()).isEqualTo("SBIN0001234");
         assertThat(saved.isGstRegistered()).isFalse();
         assertThat(saved.getGstin()).isNull();
+        assertThat(saved.isKycApproved()).isTrue();
     }
 
     @Test
@@ -314,27 +315,4 @@ class AdminServiceTest {
         verify(vendorRepository, never()).save(any());
     }
 
-    // --- approveKyc ---
-
-    @Test
-    void approveKyc_setsKycApprovedTrue() {
-        when(vendorRepository.findById(vendor.getId())).thenReturn(Optional.of(vendor));
-
-        adminService.approveKyc(vendor.getId());
-
-        assertThat(vendor.isKycApproved()).isTrue();
-        verify(vendorRepository).save(vendor);
-    }
-
-    @Test
-    void approveKyc_throwsNotFoundWhenVendorMissing() {
-        UUID unknownId = UUID.randomUUID();
-        when(vendorRepository.findById(unknownId)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> adminService.approveKyc(unknownId))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Vendor not found");
-
-        verify(vendorRepository, never()).save(any());
-    }
 }
