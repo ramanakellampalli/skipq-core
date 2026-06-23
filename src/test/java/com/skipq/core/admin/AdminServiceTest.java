@@ -143,6 +143,23 @@ class AdminServiceTest {
         assertThat(captor.getValue().getGstin()).isEqualTo("29ABCDE1234F1Z5");
     }
 
+    @Test
+    void createVendor_nonBypass_savesKycFieldsAndSendsInvite() {
+        ReflectionTestUtils.setField(adminService, "bypass", false);
+        when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
+
+        adminService.createVendor(generalRequest("Bangalore"));
+
+        ArgumentCaptor<Vendor> captor = ArgumentCaptor.forClass(Vendor.class);
+        verify(vendorRepository).save(captor.capture());
+        Vendor saved = captor.getValue();
+        assertThat(saved.getBusinessName()).isEqualTo("City Cafe Pvt Ltd");
+        assertThat(saved.getPan()).isEqualTo("ABCDE1234F");
+        assertThat(saved.getBankAccount()).isEqualTo("123456789012");
+        assertThat(saved.getIfsc()).isEqualTo("SBIN0001234");
+        verify(emailService).sendVendorInvite(eq("owner@gmail.com"), eq("Priya"), anyString());
+    }
+
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" "})

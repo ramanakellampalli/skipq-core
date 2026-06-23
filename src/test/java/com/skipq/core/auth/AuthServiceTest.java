@@ -1,15 +1,15 @@
 package com.skipq.core.auth;
 
 import com.skipq.core.auth.dto.ForgotPasswordRequest;
+import com.skipq.core.auth.dto.LoginRequest;
 import com.skipq.core.auth.dto.OtpSentResponse;
 import com.skipq.core.auth.dto.RegisterRequest;
 import com.skipq.core.auth.dto.ResetPasswordRequest;
+import com.skipq.core.auth.dto.SetupAccountRequest;
 import com.skipq.core.campus.Campus;
 import com.skipq.core.campus.CampusRepository;
-import com.skipq.core.auth.dto.LoginRequest;
 import com.skipq.core.common.AccountStatus;
 import com.skipq.core.common.UserRole;
-import com.skipq.core.config.RazorpayService;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,7 +40,6 @@ class AuthServiceTest {
     @Mock PasswordEncoder passwordEncoder;
     @Mock JwtService jwtService;
     @Mock AuthenticationManager authenticationManager;
-    @Mock RazorpayService razorpayService;
     @Mock OtpService otpService;
 
     @InjectMocks AuthService authService;
@@ -288,6 +287,65 @@ class AuthServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid or expired OTP");
 
+        verify(passwordEncoder, never()).encode(any());
+    }
+
+    // --- setupAccount ---
+
+    @Test
+    void setupAccount_validToken_setsPasswordHashAndClearsToken() {
+        vendorUser.setSetupToken("valid-token");
+        vendorUser.setSetupTokenExpiresAt(LocalDateTime.now().plusHours(1));
+        when(userRepository.findBySetupToken("valid-token")).thenReturn(Optional.of(vendorUser));
+        when(vendorRepository.findByUserId(vendorUser.getId())).thenReturn(Optional.of(vendor));
+        when(passwordEncoder.encode("NewPass123")).thenReturn("hashed-new");
+        when(jwtService.generateToken(vendorUser)).thenReturn("jwt-token");
+
+        authService.setupAccount(new SetupAccountRequest("valid-token", "NewPass123"));
+
+        assertThat(vendorUser.getPasswordHash()).isEqualTo("hashed-new");
+        assertThat(vendorUser.getSetupToken()).isNull();
+        assertThat(vendorUser.getSetupTokenExpiresAt()).isNull();
+        verify(userRepository).save(vendorUser);
+    }
+
+    @Test
+    void setupAccount_validToken_returnsAuthResponse() {
+        vendorUser.setSetupToken("valid-token");
+        vendorUser.setSetupTokenExpiresAt(LocalDateTime.now().plusHours(1));
+        when(userRepository.findBySetupToken("valid-token")).thenReturn(Optional.of(vendorUser));
+        when(vendorRepository.findByUserId(vendorUser.getId())).thenReturn(Optional.of(vendor));
+        when(passwordEncoder.encode("NewPass123")).thenReturn("hashed-new");
+        when(jwtService.generateToken(vendorUser)).thenReturn("jwt-token");
+
+        var response = authService.setupAccount(new SetupAccountRequest("valid-token", "NewPass123"));
+
+        assertThat(response.token()).isEqualTo("jwt-token");
+        assertThat(response.email()).isEqualTo(vendorUser.getEmail());
+    }
+
+    @Test
+    void setupAccount_invalidToken_throws() {
+        when(userRepository.findBySetupToken("bad-token")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.setupAccount(new SetupAccountRequest("bad-token", "NewPass123")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid or expired setup token");
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void setupAccount_expiredToken_throws() {
+        vendorUser.setSetupToken("expired-token");
+        vendorUser.setSetupTokenExpiresAt(LocalDateTime.now().minusMinutes(1));
+        when(userRepository.findBySetupToken("expired-token")).thenReturn(Optional.of(vendorUser));
+
+        assertThatThrownBy(() -> authService.setupAccount(new SetupAccountRequest("expired-token", "NewPass123")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("expired");
+
+        verify(userRepository, never()).save(any());
         verify(passwordEncoder, never()).encode(any());
     }
 
