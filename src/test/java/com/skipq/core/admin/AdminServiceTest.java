@@ -11,7 +11,6 @@ import com.skipq.core.common.UserRole;
 import com.skipq.core.notification.EmailService;
 import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
-import com.skipq.core.config.RazorpayService;
 import com.skipq.core.settlement.VendorLedger;
 import com.skipq.core.settlement.VendorLedgerRepository;
 import com.skipq.core.support.ServiceRequestService;
@@ -50,13 +49,28 @@ class AdminServiceTest {
     @Mock OrderMapper orderMapper;
     @Mock EmailService emailService;
     @Mock PasswordEncoder passwordEncoder;
-    @Mock RazorpayService razorpayService;
     @Mock ServiceRequestService serviceRequestService;
     @Mock VendorLedgerRepository vendorLedgerRepository;
 
     @InjectMocks AdminService adminService;
 
     private Vendor vendor;
+
+    private static CreateVendorRequest generalRequest(String city) {
+        return new CreateVendorRequest(
+                "City Cafe", "owner@gmail.com", "Priya", 10,
+                null, city, "+91 90000 00001",
+                "City Cafe Pvt Ltd", "ABCDE1234F", "123456789012", "SBIN0001234",
+                false, null);
+    }
+
+    private static CreateVendorRequest campusRequest(UUID campusId) {
+        return new CreateVendorRequest(
+                "Campus Stall", "owner@campus.edu", "Ramana", 15,
+                campusId, null, "+91 90000 00001",
+                "Campus Stall Pvt Ltd", "XYZPQ5678G", "987654321098", "HDFC0000001",
+                true, "29ABCDE1234F1Z5");
+    }
 
     @BeforeEach
     void setUp() {
@@ -73,8 +87,6 @@ class AdminServiceTest {
                 .accountStatus(AccountStatus.ACTIVE)
                 .build();
 
-        // vendorRepository.save() must return the entity so AdminService can read its ID
-        // to create the corresponding vendor_ledger row.
         lenient().when(vendorRepository.save(any(Vendor.class))).thenReturn(vendor);
     }
 
@@ -86,9 +98,7 @@ class AdminServiceTest {
         when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
         when(passwordEncoder.encode(any())).thenReturn("hashed");
 
-        adminService.createVendor(new CreateVendorRequest(
-                "City Cafe", "owner@gmail.com", "Priya", 10,
-                null, "Bangalore", "+91 90000 00001"));
+        adminService.createVendor(generalRequest("Bangalore"));
 
         ArgumentCaptor<Vendor> captor = ArgumentCaptor.forClass(Vendor.class);
         verify(vendorRepository).save(captor.capture());
@@ -97,15 +107,49 @@ class AdminServiceTest {
         assertThat(captor.getValue().getCampus()).isNull();
     }
 
+    @Test
+    void createVendor_bypass_savesKycFields() {
+        ReflectionTestUtils.setField(adminService, "bypass", true);
+        when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
+        when(passwordEncoder.encode(any())).thenReturn("hashed");
+
+        adminService.createVendor(generalRequest("Bangalore"));
+
+        ArgumentCaptor<Vendor> captor = ArgumentCaptor.forClass(Vendor.class);
+        verify(vendorRepository).save(captor.capture());
+        Vendor saved = captor.getValue();
+        assertThat(saved.getBusinessName()).isEqualTo("City Cafe Pvt Ltd");
+        assertThat(saved.getPan()).isEqualTo("ABCDE1234F");
+        assertThat(saved.getBankAccount()).isEqualTo("123456789012");
+        assertThat(saved.getIfsc()).isEqualTo("SBIN0001234");
+        assertThat(saved.isGstRegistered()).isFalse();
+        assertThat(saved.getGstin()).isNull();
+    }
+
+    @Test
+    void createVendor_gstRegistered_savesGstin() {
+        ReflectionTestUtils.setField(adminService, "bypass", true);
+        UUID campusId = UUID.randomUUID();
+        Campus campus = Campus.builder().id(campusId).name("Test Campus").emailDomain("campus.edu").build();
+        when(userRepository.existsByEmail("owner@campus.edu")).thenReturn(false);
+        when(campusRepository.findById(campusId)).thenReturn(Optional.of(campus));
+        when(passwordEncoder.encode(any())).thenReturn("hashed");
+
+        adminService.createVendor(campusRequest(campusId));
+
+        ArgumentCaptor<Vendor> captor = ArgumentCaptor.forClass(Vendor.class);
+        verify(vendorRepository).save(captor.capture());
+        assertThat(captor.getValue().isGstRegistered()).isTrue();
+        assertThat(captor.getValue().getGstin()).isEqualTo("29ABCDE1234F1Z5");
+    }
+
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" "})
     void createVendor_generalVendor_missingCity_throws(String city) {
         when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
-        var req = new CreateVendorRequest("City Cafe", "owner@gmail.com", "Priya", 10,
-                null, city, "+91 90000 00001");
 
-        assertThatThrownBy(() -> adminService.createVendor(req))
+        assertThatThrownBy(() -> adminService.createVendor(generalRequest(city)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("City is required");
 
@@ -121,9 +165,7 @@ class AdminServiceTest {
         when(campusRepository.findById(campusId)).thenReturn(Optional.of(campus));
         when(passwordEncoder.encode(any())).thenReturn("hashed");
 
-        adminService.createVendor(new CreateVendorRequest(
-                "Campus Stall", "owner@campus.edu", "Ramana", 15,
-                campusId, null, "+91 90000 00001"));
+        adminService.createVendor(campusRequest(campusId));
 
         ArgumentCaptor<Vendor> captor = ArgumentCaptor.forClass(Vendor.class);
         verify(vendorRepository).save(captor.capture());
@@ -135,10 +177,8 @@ class AdminServiceTest {
         UUID campusId = UUID.randomUUID();
         when(userRepository.existsByEmail("owner@campus.edu")).thenReturn(false);
         when(campusRepository.findById(campusId)).thenReturn(Optional.empty());
-        var req = new CreateVendorRequest("Campus Stall", "owner@campus.edu", "Ramana", 15,
-                campusId, null, "+91 90000 00001");
 
-        assertThatThrownBy(() -> adminService.createVendor(req))
+        assertThatThrownBy(() -> adminService.createVendor(campusRequest(campusId)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Campus not found");
 
@@ -148,10 +188,8 @@ class AdminServiceTest {
     @Test
     void createVendor_emailAlreadyRegistered_throws() {
         when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(true);
-        var req = new CreateVendorRequest("City Cafe", "owner@gmail.com", "Priya", 10,
-                null, "Bangalore", "+91 90000 00001");
 
-        assertThatThrownBy(() -> adminService.createVendor(req))
+        assertThatThrownBy(() -> adminService.createVendor(generalRequest("Bangalore")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Email already registered");
 
@@ -164,13 +202,22 @@ class AdminServiceTest {
         when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
         when(passwordEncoder.encode(any())).thenReturn("hashed");
 
-        adminService.createVendor(new CreateVendorRequest(
-                "City Cafe", "owner@gmail.com", "Priya", 10,
-                null, "Bangalore", "+91 90000 00001"));
+        adminService.createVendor(generalRequest("Bangalore"));
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
         assertThat(captor.getValue().getPhone()).isEqualTo("+91 90000 00001");
+    }
+
+    @Test
+    void createVendor_createsVendorLedgerRow() {
+        ReflectionTestUtils.setField(adminService, "bypass", true);
+        when(userRepository.existsByEmail("owner@gmail.com")).thenReturn(false);
+        when(passwordEncoder.encode(any())).thenReturn("hashed");
+
+        adminService.createVendor(generalRequest("Bangalore"));
+
+        verify(vendorLedgerRepository).save(any(VendorLedger.class));
     }
 
     // --- sync ---
@@ -244,6 +291,30 @@ class AdminServiceTest {
 
         assertThatThrownBy(() -> adminService.updateVendorStatus(unknownId,
                 new UpdateVendorStatusRequest(AccountStatus.SUSPENDED, "reason")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Vendor not found");
+
+        verify(vendorRepository, never()).save(any());
+    }
+
+    // --- approveKyc ---
+
+    @Test
+    void approveKyc_setsKycApprovedTrue() {
+        when(vendorRepository.findById(vendor.getId())).thenReturn(Optional.of(vendor));
+
+        adminService.approveKyc(vendor.getId());
+
+        assertThat(vendor.isKycApproved()).isTrue();
+        verify(vendorRepository).save(vendor);
+    }
+
+    @Test
+    void approveKyc_throwsNotFoundWhenVendorMissing() {
+        UUID unknownId = UUID.randomUUID();
+        when(vendorRepository.findById(unknownId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> adminService.approveKyc(unknownId))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Vendor not found");
 

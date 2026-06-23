@@ -60,9 +60,6 @@ public class Vendor {
     @Column(name = "gstin", length = 15)
     private String gstin;
 
-    @Column(name = "razorpay_linked_acct_id", length = 50)
-    private String razorpayLinkedAccountId;
-
     @Column(name = "kyc_approved", nullable = false)
     private boolean kycApproved = false;
 

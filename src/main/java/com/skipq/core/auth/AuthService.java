@@ -5,7 +5,6 @@ import com.skipq.core.campus.Campus;
 import com.skipq.core.campus.CampusRepository;
 import com.skipq.core.common.AccountStatus;
 import com.skipq.core.common.UserRole;
-import com.skipq.core.config.RazorpayService;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +32,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final RazorpayService razorpayService;
     private final OtpService otpService;
 
     @Value("${otp.allowed-test-domain:test.skipq.dev}")
@@ -134,23 +132,6 @@ public class AuthService {
 
         Vendor vendor = vendorRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Vendor not found for user"));
-
-        vendor.setBusinessName(request.businessName());
-        vendor.setPan(request.pan());
-        vendor.setBankAccount(request.bankAccount());
-        vendor.setIfsc(request.ifsc());
-        vendor.setGstRegistered(request.gstRegistered());
-        vendor.setGstin(request.gstRegistered() ? request.gstin() : null);
-
-        try {
-            String linkedAccountId = razorpayService.createLinkedAccount(
-                    request.businessName(), request.pan(),
-                    request.bankAccount(), request.ifsc()
-            );
-            vendor.setRazorpayLinkedAccountId(linkedAccountId);
-        } catch (Exception e) {
-            log.error("Razorpay linked account creation failed for vendor {}: {}", vendor.getId(), e.getMessage());
-        }
 
         vendorRepository.save(vendor);
 
