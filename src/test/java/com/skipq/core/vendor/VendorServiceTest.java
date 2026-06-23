@@ -8,7 +8,14 @@ import com.skipq.core.auth.UserRepository;
 import com.skipq.core.order.OrderItemRepository;
 import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
+import com.skipq.core.settlement.PayoutStatus;
+import com.skipq.core.settlement.VendorLedger;
+import com.skipq.core.settlement.VendorLedgerRepository;
+import com.skipq.core.settlement.VendorPayout;
+import com.skipq.core.settlement.VendorPayoutRepository;
+import com.skipq.core.settlement.dto.VendorPayoutSummary;
 import com.skipq.core.support.ServiceRequestService;
+import com.skipq.core.vendor.dto.VendorDashboardResponse;
 import com.skipq.core.vendor.dto.VendorResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,11 +24,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,6 +46,8 @@ class VendorServiceTest {
     @Mock UserRepository userRepository;
     @Mock ServiceRequestService serviceRequestService;
     @Mock OrderMapper orderMapper;
+    @Mock VendorLedgerRepository vendorLedgerRepository;
+    @Mock VendorPayoutRepository vendorPayoutRepository;
 
     @InjectMocks VendorService vendorService;
 
@@ -162,5 +175,86 @@ class VendorServiceTest {
         assertThatThrownBy(() -> vendorService.getById(id))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Vendor not found");
+    }
+
+    // ── sync() ───────────────────────────────────────────────
+
+    private Vendor syncVendor() {
+        return campusVendor("Sync Stall", true);
+    }
+
+    private void stubSyncDependencies(Vendor vendor) {
+        UUID userId = UUID.randomUUID();
+        when(orderRepository.findAllByVendorUserIdWithItems(any())).thenReturn(List.of());
+        when(vendorRepository.findByUserId(any())).thenReturn(Optional.of(vendor));
+        when(menuItemRepository.findAllByVendorIdWithVariants(vendor.getId())).thenReturn(List.of());
+        when(serviceRequestService.findByUser(any())).thenReturn(List.of());
+    }
+
+    @Test
+    void sync_returnsAvailableBalance_fromVendorLedger() {
+        Vendor vendor = syncVendor();
+        stubSyncDependencies(vendor);
+        VendorLedger ledger = VendorLedger.builder()
+                .vendorId(vendor.getId())
+                .availableBalance(new BigDecimal("1500.00"))
+                .build();
+        when(vendorLedgerRepository.findById(vendor.getId())).thenReturn(Optional.of(ledger));
+        when(vendorPayoutRepository.findTop10ByVendorId(vendor.getId())).thenReturn(List.of());
+
+        VendorDashboardResponse response = vendorService.sync(UUID.randomUUID());
+
+        assertThat(response.availableBalance()).isEqualByComparingTo("1500.00");
+    }
+
+    @Test
+    void sync_returnsZeroBalance_whenNoLedgerRow() {
+        Vendor vendor = syncVendor();
+        stubSyncDependencies(vendor);
+        when(vendorLedgerRepository.findById(vendor.getId())).thenReturn(Optional.empty());
+        when(vendorPayoutRepository.findTop10ByVendorId(vendor.getId())).thenReturn(List.of());
+
+        VendorDashboardResponse response = vendorService.sync(UUID.randomUUID());
+
+        assertThat(response.availableBalance()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    void sync_mapsRecentPayouts() {
+        Vendor vendor = syncVendor();
+        stubSyncDependencies(vendor);
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(1);
+        VendorPayout payout = VendorPayout.builder()
+                .id(UUID.randomUUID())
+                .vendor(vendor)
+                .amount(new BigDecimal("800.00"))
+                .settlementStartAt(cutoff.minusDays(7))
+                .settlementCutoffAt(cutoff)
+                .status(PayoutStatus.SUCCESS)
+                .payoutReference("UTR123456")
+                .build();
+        when(vendorLedgerRepository.findById(vendor.getId())).thenReturn(Optional.empty());
+        when(vendorPayoutRepository.findTop10ByVendorId(vendor.getId())).thenReturn(List.of(payout));
+
+        VendorDashboardResponse response = vendorService.sync(UUID.randomUUID());
+
+        assertThat(response.recentPayouts()).hasSize(1);
+        VendorPayoutSummary summary = response.recentPayouts().get(0);
+        assertThat(summary.amount()).isEqualByComparingTo("800.00");
+        assertThat(summary.status()).isEqualTo(PayoutStatus.SUCCESS);
+        assertThat(summary.payoutReference()).isEqualTo("UTR123456");
+        assertThat(summary.settlementCutoffAt()).isEqualTo(cutoff);
+    }
+
+    @Test
+    void sync_returnsEmptyPayouts_whenNone() {
+        Vendor vendor = syncVendor();
+        stubSyncDependencies(vendor);
+        when(vendorLedgerRepository.findById(vendor.getId())).thenReturn(Optional.empty());
+        when(vendorPayoutRepository.findTop10ByVendorId(vendor.getId())).thenReturn(List.of());
+
+        VendorDashboardResponse response = vendorService.sync(UUID.randomUUID());
+
+        assertThat(response.recentPayouts()).isEmpty();
     }
 }

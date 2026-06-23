@@ -11,6 +11,10 @@ import com.skipq.core.order.OrderItemRepository;
 import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.order.dto.OrderResponse;
+import com.skipq.core.settlement.VendorLedger;
+import com.skipq.core.settlement.VendorLedgerRepository;
+import com.skipq.core.settlement.VendorPayoutRepository;
+import com.skipq.core.settlement.dto.VendorPayoutSummary;
 import com.skipq.core.support.ServiceRequestService;
 import com.skipq.core.support.dto.ServiceRequestResponse;
 import com.skipq.core.vendor.dto.UpdateVendorRequest;
@@ -20,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
@@ -37,6 +42,8 @@ public class VendorService {
     private final UserRepository userRepository;
     private final ServiceRequestService serviceRequestService;
     private final OrderMapper orderMapper;
+    private final VendorLedgerRepository vendorLedgerRepository;
+    private final VendorPayoutRepository vendorPayoutRepository;
 
     public VendorResponse getProfile(UUID userId) {
         return toResponse(findByUserId(userId));
@@ -75,7 +82,16 @@ public class VendorService {
 
         List<ServiceRequestResponse> serviceRequests = serviceRequestService.findByUser(userId);
 
-        return new VendorDashboardResponse(toResponse(vendor), activeOrders, pastOrders, items, serviceRequests);
+        BigDecimal availableBalance = vendorLedgerRepository.findById(vendor.getId())
+                .map(VendorLedger::getAvailableBalance)
+                .orElse(BigDecimal.ZERO);
+
+        List<VendorPayoutSummary> recentPayouts = vendorPayoutRepository
+                .findTop10ByVendorId(vendor.getId())
+                .stream().map(VendorPayoutSummary::from).toList();
+
+        return new VendorDashboardResponse(toResponse(vendor), activeOrders, pastOrders, items, serviceRequests,
+                availableBalance, recentPayouts);
     }
 
     public List<VendorResponse> getOpenVendors() {
