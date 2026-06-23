@@ -59,6 +59,12 @@ public class AdminController {
         adminService.updateVendorStatus(id, request);
     }
 
+    @PutMapping("/vendors/{id}/kyc-approve")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void approveKyc(@PathVariable UUID id) {
+        adminService.approveKyc(id);
+    }
+
     @PostMapping("/r2/refresh-cache")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void refreshR2Cache() {

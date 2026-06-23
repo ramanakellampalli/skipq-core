@@ -99,11 +99,12 @@ public class AdminService {
 
             vendorBuilder
                     .user(user)
-                    .businessName(request.vendorName())
-                    .pan("ABCDE1234F")
-                    .bankAccount("0000000000")
-                    .ifsc("SBIN0000000")
-                    .gstRegistered(false);
+                    .businessName(request.businessName())
+                    .pan(request.pan())
+                    .bankAccount(request.bankAccount())
+                    .ifsc(request.ifsc())
+                    .gstRegistered(request.gstRegistered())
+                    .gstin(request.gstRegistered() ? request.gstin() : null);
 
             log.info("[DEV] Vendor created: {} — login: {} / {}", request.vendorName(), request.email(), DEV_VENDOR_PASSWORD);
         } else {
@@ -118,7 +119,14 @@ public class AdminService {
                     .build();
             userRepository.save(user);
 
-            vendorBuilder.user(user);
+            vendorBuilder
+                    .user(user)
+                    .businessName(request.businessName())
+                    .pan(request.pan())
+                    .bankAccount(request.bankAccount())
+                    .ifsc(request.ifsc())
+                    .gstRegistered(request.gstRegistered())
+                    .gstin(request.gstRegistered() ? request.gstin() : null);
 
             emailService.sendVendorInvite(request.email(), request.ownerName(), setupToken);
             log.info("Vendor created: {} ({}), campus: {}, invite sent to {}",
@@ -169,5 +177,15 @@ public class AdminService {
         vendor.setSuspensionNote(request.status() == AccountStatus.SUSPENDED ? request.note() : null);
         vendorRepository.save(vendor);
         log.info("Vendor {} status updated to {} by admin", vendorId, request.status());
+    }
+
+    @Transactional
+    public void approveKyc(UUID vendorId) {
+        Vendor vendor = vendorRepository.findById(vendorId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Vendor not found"));
+        vendor.setKycApproved(true);
+        vendorRepository.save(vendor);
+        log.info("KYC approved for vendor {} by admin", vendorId);
     }
 }

@@ -3,8 +3,6 @@ package com.skipq.core.webhook;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipq.core.order.OrderService;
-import com.skipq.core.vendor.Vendor;
-import com.skipq.core.vendor.VendorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,7 +19,6 @@ import java.util.HexFormat;
 @RequiredArgsConstructor
 public class RazorpayWebhookService {
 
-    private final VendorRepository vendorRepository;
     private final OrderService orderService;
     private final ObjectMapper objectMapper;
 
@@ -38,12 +35,10 @@ public class RazorpayWebhookService {
             log.info("Razorpay webhook received: {}", event);
 
             switch (event) {
-                case "payment.captured"              -> handlePaymentCaptured(root);
-                case "payment.failed"                -> handlePaymentFailed(root);
-                case "account.instantly_activated"   -> handleAccountInstantlyActivated(root);
-                case "account.activated_kyc_pending" -> handleAccountActivatedKycPending(root);
-                case "refund.processed"              -> handleRefundProcessed(root);
-                case "refund.failed"                 -> handleRefundFailed(root);
+                case "payment.captured" -> handlePaymentCaptured(root);
+                case "payment.failed"   -> handlePaymentFailed(root);
+                case "refund.processed" -> handleRefundProcessed(root);
+                case "refund.failed"    -> handleRefundFailed(root);
                 default -> log.debug("Unhandled Razorpay webhook event: {}", event);
             }
         } catch (Exception e) {
@@ -76,32 +71,6 @@ public class RazorpayWebhookService {
 
         orderService.handlePaymentFailed(razorpayOrderId);
         log.info("Payment failed, order draft deleted: razorpay_order={}", razorpayOrderId);
-    }
-
-    private void handleAccountInstantlyActivated(JsonNode root) {
-        String linkedAccountId = root.path("payload").path("account").path("entity").path("id").asText();
-
-        if (linkedAccountId.isBlank()) {
-            log.warn("account.instantly_activated webhook missing account id");
-            return;
-        }
-
-        Vendor vendor = vendorRepository.findByRazorpayLinkedAccountId(linkedAccountId).orElse(null);
-        if (vendor == null) {
-            log.warn("account.instantly_activated: no vendor found for linked account {}", linkedAccountId);
-            return;
-        }
-
-        vendor.setKycApproved(true);
-        vendorRepository.save(vendor);
-        log.info("KYC fully approved for vendor {} (linked account {})", vendor.getId(), linkedAccountId);
-    }
-
-    private void handleAccountActivatedKycPending(JsonNode root) {
-        String linkedAccountId = root.path("payload").path("account").path("entity").path("id").asText();
-        // Account is live and can receive transfers but KYC docs still under review.
-        // kycApproved stays false — vendor banner remains visible until instantly_activated fires.
-        log.info("account.activated_kyc_pending: linked account {} is live, KYC under review", linkedAccountId);
     }
 
     private void handleRefundProcessed(JsonNode root) {
