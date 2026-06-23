@@ -16,6 +16,7 @@ import com.skipq.core.menu.MenuVariant;
 import com.skipq.core.menu.MenuVariantRepository;
 import com.skipq.core.order.dto.*;
 import com.skipq.core.vendor.Vendor;
+import com.skipq.core.settlement.LedgerService;
 import com.skipq.core.vendor.VendorRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,7 @@ class OrderServiceTest {
     @Mock AblyService ablyService;
     @Mock FcmService fcmService;
     @Mock RazorpayService razorpayService;
+    @Mock LedgerService ledgerService;
     @Spy  OrderMapper orderMapper;
     @Spy  OrderTransitionPolicy transitionPolicy;
 
@@ -545,48 +547,25 @@ class OrderServiceTest {
     }
 
     @Test
-    void updateStatus_toReady_firesTransferToVendor() throws Exception {
-        vendor.setRazorpayLinkedAccountId("acc_linked123");
-        Order order = buildOrder(OrderStatus.PREPARING, PaymentStatus.PAID);
-        order.setPaymentRef("pay_abc456");
+    void updateStatus_toCompleted_creditsVendorLedger() {
+        Order order = buildOrder(OrderStatus.READY, PaymentStatus.PAID);
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
         when(orderRepository.findByIdWithItems(order.getId())).thenReturn(Optional.of(order));
 
-        orderService.updateStatus(userId, order.getId(), OrderStatus.READY);
+        orderService.updateStatus(userId, order.getId(), OrderStatus.COMPLETED);
 
-        // totalAmount(103) - platformFee(3) = 100 → 10000 paise
-        verify(razorpayService).transferToVendor(eq("pay_abc456"),
-                argThat(r -> "acc_linked123".equals(r.linkedAccountId()) && r.amountPaise() == 10000L));
+        verify(ledgerService).creditVendor(order);
     }
 
     @Test
-    void updateStatus_toReady_noLinkedAccount_skipsTransfer() throws Exception {
-        // vendor has no razorpayLinkedAccountId (KYC pending)
+    void updateStatus_toReady_doesNotCreditLedger() {
         Order order = buildOrder(OrderStatus.PREPARING, PaymentStatus.PAID);
-        order.setPaymentRef("pay_abc456");
         when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
         when(orderRepository.findByIdWithItems(order.getId())).thenReturn(Optional.of(order));
 
         orderService.updateStatus(userId, order.getId(), OrderStatus.READY);
 
-        verifyNoInteractions(razorpayService);
-    }
-
-    @Test
-    void updateStatus_toReady_transferFails_statusStillUpdated() throws Exception {
-        vendor.setRazorpayLinkedAccountId("acc_linked123");
-        Order order = buildOrder(OrderStatus.PREPARING, PaymentStatus.PAID);
-        order.setPaymentRef("pay_abc456");
-        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.of(vendor));
-        when(orderRepository.findByIdWithItems(order.getId())).thenReturn(Optional.of(order));
-        doThrow(new RazorpayException("transfer error"))
-                .when(razorpayService).transferToVendor(anyString(), any());
-
-        // Transfer failure must NOT propagate — order status update goes through
-        orderService.updateStatus(userId, order.getId(), OrderStatus.READY);
-
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.READY);
-        verify(orderRepository).save(order);
+        verifyNoInteractions(ledgerService);
     }
 
     @Test
