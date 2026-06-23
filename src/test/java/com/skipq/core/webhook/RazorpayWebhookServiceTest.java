@@ -1,8 +1,6 @@
 package com.skipq.core.webhook;
 
 import com.skipq.core.order.OrderService;
-import com.skipq.core.vendor.Vendor;
-import com.skipq.core.vendor.VendorRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,10 +13,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.HexFormat;
-import java.util.Optional;
-import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
@@ -27,14 +22,13 @@ class RazorpayWebhookServiceTest {
 
     private static final String SECRET = "test_webhook_secret";
 
-    @Mock VendorRepository vendorRepository;
     @Mock OrderService orderService;
 
     RazorpayWebhookService webhookService;
 
     @BeforeEach
     void setUp() {
-        webhookService = new RazorpayWebhookService(vendorRepository, orderService, new ObjectMapper());
+        webhookService = new RazorpayWebhookService(orderService, new ObjectMapper());
         ReflectionTestUtils.setField(webhookService, "webhookSecret", SECRET);
     }
 
@@ -156,93 +150,6 @@ class RazorpayWebhookServiceTest {
         verifyNoInteractions(orderService);
     }
 
-    // ── account.instantly_activated ───────────────────────────────────────────
-
-    @Test
-    void handle_accountInstantlyActivated_setsKycApprovedOnVendor() throws Exception {
-        String linkedId = "acc_linked123";
-        Vendor vendor = Vendor.builder().id(UUID.randomUUID()).name("Stall").kycApproved(false).build();
-        when(vendorRepository.findByRazorpayLinkedAccountId(linkedId)).thenReturn(Optional.of(vendor));
-
-        String payload = """
-                {
-                  "event": "account.instantly_activated",
-                  "payload": {
-                    "account": {
-                      "entity": {
-                        "id": "%s"
-                      }
-                    }
-                  }
-                }""".formatted(linkedId);
-
-        webhookService.handle(payload, sign(payload));
-
-        assertThat(vendor.isKycApproved()).isTrue();
-        verify(vendorRepository).save(vendor);
-    }
-
-    @Test
-    void handle_accountInstantlyActivated_vendorNotFound_noSave() throws Exception {
-        when(vendorRepository.findByRazorpayLinkedAccountId(anyString())).thenReturn(Optional.empty());
-
-        String payload = """
-                {
-                  "event": "account.instantly_activated",
-                  "payload": {
-                    "account": {
-                      "entity": {
-                        "id": "acc_unknown"
-                      }
-                    }
-                  }
-                }""";
-
-        webhookService.handle(payload, sign(payload));
-
-        verify(vendorRepository, never()).save(any());
-    }
-
-    @Test
-    void handle_accountInstantlyActivated_missingId_noLookup() throws Exception {
-        String payload = """
-                {
-                  "event": "account.instantly_activated",
-                  "payload": {
-                    "account": {
-                      "entity": {
-                        "id": ""
-                      }
-                    }
-                  }
-                }""";
-
-        webhookService.handle(payload, sign(payload));
-
-        verifyNoInteractions(vendorRepository);
-    }
-
-    // ── account.activated_kyc_pending ─────────────────────────────────────────
-
-    @Test
-    void handle_accountActivatedKycPending_noServiceInteraction() throws Exception {
-        String payload = """
-                {
-                  "event": "account.activated_kyc_pending",
-                  "payload": {
-                    "account": {
-                      "entity": {
-                        "id": "acc_linked123"
-                      }
-                    }
-                  }
-                }""";
-
-        webhookService.handle(payload, sign(payload));
-
-        verifyNoInteractions(orderService, vendorRepository);
-    }
-
     // ── refund.processed ──────────────────────────────────────────────────────
 
     @Test
@@ -263,7 +170,7 @@ class RazorpayWebhookServiceTest {
 
         webhookService.handle(payload, sign(payload));
 
-        verifyNoInteractions(orderService, vendorRepository);
+        verifyNoInteractions(orderService);
     }
 
     // ── refund.failed ─────────────────────────────────────────────────────────
@@ -286,7 +193,7 @@ class RazorpayWebhookServiceTest {
 
         webhookService.handle(payload, sign(payload));
 
-        verifyNoInteractions(orderService, vendorRepository);
+        verifyNoInteractions(orderService);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
