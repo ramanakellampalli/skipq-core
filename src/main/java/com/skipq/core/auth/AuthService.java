@@ -70,7 +70,13 @@ public class AuthService {
                 });
 
         log.debug("Found user: {} with role: {}", user.getId(), user.getRole());
-        
+
+        if (request.role() != null && request.role() != user.getRole()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "This account is not registered as a " + request.role().name().toLowerCase());
+        }
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(user.getId().toString(), request.password())

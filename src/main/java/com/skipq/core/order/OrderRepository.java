@@ -76,6 +76,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
           COALESCE(SUM(CASE WHEN o.status IN ('ACCEPTED', 'PREPARING') THEN 1 ELSE 0 END), 0) AS inProgress
         FROM Order o
         WHERE CAST(o.createdAt AS date) = CURRENT_DATE
+          AND o.paymentStatus = com.skipq.core.common.PaymentStatus.PAID
         """)
     OrderStatsProjection getTodayStats();
 

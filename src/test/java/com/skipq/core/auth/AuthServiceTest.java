@@ -364,7 +364,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("vendor@campus.edu")).thenReturn(Optional.of(vendorUser));
         when(vendorRepository.findByUserId(vendorUser.getId())).thenReturn(Optional.of(suspendedVendor));
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest("vendor@campus.edu", "password")))
+        assertThatThrownBy(() -> authService.login(new LoginRequest("vendor@campus.edu", "password", null)))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
                 .hasMessageContaining("Repeated order rejections");
     }
@@ -375,7 +375,7 @@ class AuthServiceTest {
         when(vendorRepository.findByUserId(vendorUser.getId())).thenReturn(Optional.of(vendor));
         when(jwtService.generateToken(vendorUser)).thenReturn("token");
 
-        var response = authService.login(new LoginRequest("vendor@campus.edu", "password"));
+        var response = authService.login(new LoginRequest("vendor@campus.edu", "password", null));
 
         assertThat(response.token()).isEqualTo("token");
     }
