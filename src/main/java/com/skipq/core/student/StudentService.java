@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 public class StudentService {
 
     private static final Set<OrderStatus> ACTIVE_STATUSES = Set.of(
-            OrderStatus.AWAITING_PAYMENT, OrderStatus.SCHEDULED,
+            OrderStatus.SCHEDULED,
             OrderStatus.PENDING, OrderStatus.ACCEPTED,
             OrderStatus.PREPARING, OrderStatus.READY
     );
