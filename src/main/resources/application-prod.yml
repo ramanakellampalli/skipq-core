@@ -42,5 +42,4 @@ app:
 
 jobs:
   scheduled-dispatch:
-    enabled: true
-    cron: "0 * 9-16 * * *"
+    enabled: false
