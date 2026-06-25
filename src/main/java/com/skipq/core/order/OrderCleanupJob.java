@@ -15,7 +15,7 @@ public class OrderCleanupJob {
 
     private final OrderRepository orderRepository;
 
-    @Scheduled(cron = "0 0 2 * * *")
+    @Scheduled(cron = "0 0 2 * * *", zone = "Asia/Kolkata")
     @Transactional
     public void cleanupStaleOrders() {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(24);

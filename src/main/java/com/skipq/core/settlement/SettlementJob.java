@@ -24,7 +24,7 @@ public class SettlementJob {
     private final VendorPayoutRepository vendorPayoutRepository;
     private final VendorRepository vendorRepository;
 
-    @Scheduled(cron = "0 0 7 * * *")
+    @Scheduled(cron = "0 0 7 * * *", zone = "Asia/Kolkata")
     @SchedulerLock(name = "daily_settlement_job", lockAtMostFor = "PT10M")
     @Transactional
     public void runDailySettlement() {
