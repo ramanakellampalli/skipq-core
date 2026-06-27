@@ -1,5 +1,7 @@
 package com.skipq.core.menu;
 
+import com.skipq.core.discount.PriceResolver;
+import com.skipq.core.discount.ResolvedPrice;
 import com.skipq.core.menu.dto.*;
 import com.skipq.core.student.dto.StudentMenuResponse;
 import com.skipq.core.vendor.Vendor;
@@ -13,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -29,6 +32,7 @@ class MenuItemServiceTest {
     @Mock MenuItemRepository menuItemRepository;
     @Mock VendorRepository vendorRepository;
     @Mock com.skipq.core.order.OrderItemRepository orderItemRepository;
+    @Mock PriceResolver priceResolver;
 
     @InjectMocks MenuItemService menuItemService;
 
@@ -41,6 +45,12 @@ class MenuItemServiceTest {
         userId   = UUID.randomUUID();
         vendorId = UUID.randomUUID();
         vendor   = Vendor.builder().id(vendorId).name("Test Stall").build();
+
+        lenient().when(priceResolver.resolve(any(MenuItem.class), any(LocalDateTime.class)))
+                .thenAnswer(inv -> {
+                    MenuItem item = inv.getArgument(0);
+                    return new ResolvedPrice(item.getPrice(), item.getPrice(), BigDecimal.ZERO, null);
+                });
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

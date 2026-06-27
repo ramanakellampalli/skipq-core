@@ -10,6 +10,11 @@ import com.skipq.core.common.PaymentStatus;
 import com.skipq.core.config.AblyService;
 import com.skipq.core.config.FcmService;
 import com.skipq.core.config.RazorpayService;
+import com.skipq.core.discount.Discount;
+import com.skipq.core.discount.DiscountScope;
+import com.skipq.core.discount.DiscountType;
+import com.skipq.core.discount.PriceResolver;
+import com.skipq.core.discount.ResolvedPrice;
 import com.skipq.core.menu.MenuItem;
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.MenuVariant;
@@ -54,6 +59,7 @@ class OrderServiceTest {
     @Mock FcmService fcmService;
     @Mock RazorpayService razorpayService;
     @Mock LedgerService ledgerService;
+    @Mock PriceResolver priceResolver;
     @Spy  OrderMapper orderMapper;
     @Spy  OrderTransitionPolicy transitionPolicy;
 
@@ -78,6 +84,14 @@ class OrderServiceTest {
         user     = User.builder().id(userId).name("Student").email("s@test.edu").campus(campus).build();
         vendor   = Vendor.builder().id(vendorId).name("Test Stall").isOpen(true).prepTime(15)
                          .gstRegistered(false).campus(campus).build();
+
+        // Default: no discount active — returns price unchanged. lenient() because many tests
+        // don't call placeOrder and would otherwise trigger UnnecessaryStubbingException.
+        lenient().when(priceResolver.resolve(any(MenuItem.class), any(BigDecimal.class), any(LocalDateTime.class)))
+                .thenAnswer(inv -> {
+                    BigDecimal price = inv.getArgument(1);
+                    return new ResolvedPrice(price, price, BigDecimal.ZERO, null);
+                });
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
@@ -795,5 +809,56 @@ class OrderServiceTest {
 
         verify(orderRepository, never()).save(any());
         verifyNoInteractions(razorpayService);
+    }
+
+    // ── discount integration ──────────────────────────────────────────────────
+
+    @Test
+    void placeOrder_itemWithActiveDiscount_freezesDiscountPricesOnOrderItem() throws Exception {
+        MenuItem item     = menuItem(true);
+        Discount discount = Discount.builder()
+                .id(UUID.randomUUID())
+                .vendor(vendor)
+                .name("10% off")
+                .type(DiscountType.PERCENTAGE)
+                .value(new BigDecimal("10"))
+                .scope(DiscountScope.ITEM)
+                .active(true)
+                .priority(0)
+                .build();
+
+        // Override default stub: 10% discount on ₹20 item → ₹18 discounted, ₹2 off
+        when(priceResolver.resolve(eq(item), eq(BigDecimal.valueOf(20)), any(LocalDateTime.class)))
+                .thenReturn(new ResolvedPrice(
+                        new BigDecimal("20.00"),
+                        new BigDecimal("18.00"),
+                        new BigDecimal("2.00"),
+                        discount
+                ));
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(menuItemRepository.findById(item.getId())).thenReturn(Optional.of(item));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order o = inv.getArgument(0);
+            o.setId(UUID.randomUUID());
+            return o;
+        });
+        when(razorpayService.createOrder(anyLong(), anyString())).thenReturn("order_disc123");
+
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
+        PlaceOrderResponse response = orderService.placeOrder(userId, request);
+
+        // ₹18 discounted price, 3% platform fee = ₹0.54, total ₹18.54 → 1854 paise
+        assertThat(response.razorpayAmountPaise()).isEqualTo(1854L);
+
+        verify(orderItemRepository).saveAll(argThat(items -> {
+            OrderItem saved = ((List<OrderItem>) items).get(0);
+            return saved.getUnitPrice().compareTo(new BigDecimal("18.00")) == 0
+                    && saved.getOriginalPrice().compareTo(new BigDecimal("20.00")) == 0
+                    && saved.getDiscountAmount().compareTo(new BigDecimal("2.00")) == 0
+                    && saved.getDiscount() == discount;
+        }));
     }
 }
