@@ -13,5 +13,7 @@ public record MenuItemResponse(
         boolean isAvailable,
         int displayOrder,
         BigDecimal price,
-        List<MenuVariantResponse> variants
+        List<MenuVariantResponse> variants,
+        BigDecimal discountedPrice,   // null when no active discount
+        String discountLabel          // e.g. "10% off"; null when no active discount
 ) {}

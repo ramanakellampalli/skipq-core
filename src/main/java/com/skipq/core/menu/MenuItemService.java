@@ -1,5 +1,7 @@
 package com.skipq.core.menu;
 
+import com.skipq.core.discount.PriceResolver;
+import com.skipq.core.discount.ResolvedPrice;
 import com.skipq.core.menu.dto.*;
 import com.skipq.core.student.dto.StudentMenuResponse;
 import com.skipq.core.vendor.Vendor;
@@ -9,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +23,7 @@ public class MenuItemService {
     private final MenuItemRepository menuItemRepository;
     private final VendorRepository vendorRepository;
     private final com.skipq.core.order.OrderItemRepository orderItemRepository;
+    private final PriceResolver priceResolver;
 
     // ── Items ─────────────────────────────────────────────────────────────────
 
@@ -141,17 +145,23 @@ public class MenuItemService {
     public MenuItemResponse toItemResponse(MenuItem item) {
         List<MenuVariantResponse> variants = item.getVariants().stream()
                 .map(this::toVariantResponse).toList();
-        boolean isAvailable = item.isAvailable();
+
+        ResolvedPrice resolved = priceResolver.resolve(item, LocalDateTime.now());
+        BigDecimal discountedPrice = resolved.hasDiscount() ? resolved.discountedPrice() : null;
+        String discountLabel       = resolved.hasDiscount() ? priceResolver.discountLabel(resolved.discount()) : null;
+
         return new MenuItemResponse(
                 item.getId(),
                 item.getCategory(),
                 item.getName(),
                 item.getDescription(),
                 item.isVeg(),
-                isAvailable,
+                item.isAvailable(),
                 item.getDisplayOrder(),
                 item.getPrice(),
-                variants
+                variants,
+                discountedPrice,
+                discountLabel
         );
     }
 
