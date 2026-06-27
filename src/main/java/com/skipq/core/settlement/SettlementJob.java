@@ -59,7 +59,7 @@ public class SettlementJob {
                     .status(PayoutStatus.PENDING)
                     .build();
 
-            vendorPayoutRepository.save(payout);
+            vendorPayoutRepository.saveAndFlush(payout);
 
             // Reserve entries immediately so a re-run cannot count them again.
             // Entries remain settled=false until admin confirms the bank transfer.
