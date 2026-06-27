@@ -9,6 +9,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -74,6 +75,19 @@ public class Discount {
             joinColumns = @JoinColumn(name = "discount_id"),
             inverseJoinColumns = @JoinColumn(name = "menu_item_id")
     )
+    @Getter(AccessLevel.NONE)
     @Builder.Default
     private Set<MenuItem> menuItems = new HashSet<>();
+
+    public Set<MenuItem> getMenuItems() {
+        return Collections.unmodifiableSet(menuItems);
+    }
+
+    public void addMenuItem(MenuItem item) {
+        menuItems.add(item);
+    }
+
+    public void removeMenuItem(UUID menuItemId) {
+        menuItems.removeIf(m -> m.getId().equals(menuItemId));
+    }
 }

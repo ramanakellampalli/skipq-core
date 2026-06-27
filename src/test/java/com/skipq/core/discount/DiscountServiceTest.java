@@ -228,7 +228,7 @@ class DiscountServiceTest {
     void detachItem_removesItemFromDiscount() {
         Discount d    = ownedDiscount();
         MenuItem item = menuItem(vendor);
-        d.getMenuItems().add(item);
+        d.addMenuItem(item);
 
         discountService.detachItem(userId, d.getId(), item.getId());
 

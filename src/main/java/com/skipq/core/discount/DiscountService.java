@@ -88,7 +88,7 @@ public class DiscountService {
                         "Item already has an active discount: " + item.getName());
             }
 
-            discount.getMenuItems().add(item);
+            discount.addMenuItem(item);
         }
 
         discountRepository.save(discount);
@@ -97,7 +97,7 @@ public class DiscountService {
     @Transactional
     public void detachItem(UUID userId, UUID discountId, UUID menuItemId) {
         Discount discount = ownedDiscount(userId, discountId);
-        discount.getMenuItems().removeIf(m -> m.getId().equals(menuItemId));
+        discount.removeMenuItem(menuItemId);
         discountRepository.save(discount);
     }
 
