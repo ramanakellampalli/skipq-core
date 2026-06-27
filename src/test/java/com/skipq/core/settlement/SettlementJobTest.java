@@ -46,7 +46,7 @@ class SettlementJobTest {
         settlementJob.runDailySettlement();
 
         ArgumentCaptor<VendorPayout> captor = ArgumentCaptor.forClass(VendorPayout.class);
-        verify(vendorPayoutRepository).save(captor.capture());
+        verify(vendorPayoutRepository).saveAndFlush(captor.capture());
         VendorPayout saved = captor.getValue();
         assertThat(saved.getVendor()).isEqualTo(vendor);
         assertThat(saved.getAmount()).isEqualByComparingTo("350.00");
@@ -103,6 +103,6 @@ class SettlementJobTest {
 
         settlementJob.runDailySettlement();
 
-        verify(vendorPayoutRepository, times(2)).save(any());
+        verify(vendorPayoutRepository, times(2)).saveAndFlush(any());
     }
 }
