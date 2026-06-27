@@ -22,7 +22,9 @@ public class OrderMapper {
                         i.getVariantLabel(),
                         i.getQuantity(),
                         i.getUnitPrice(),
-                        i.getUnitPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantity()))
+                        i.getUnitPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantity())),
+                        i.getOriginalPrice(),
+                        i.getDiscountAmount()
                 ))
                 .toList();
 
