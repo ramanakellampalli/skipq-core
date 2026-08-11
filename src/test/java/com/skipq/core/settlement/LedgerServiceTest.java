@@ -91,6 +91,7 @@ class LedgerServiceTest {
         assertThat(MDC.get("event")).isNull();
         assertThat(MDC.get("orderId")).isNull();
         assertThat(MDC.get("vendorId")).isNull();
+        assertThat(MDC.get("vendorName")).isNull();
     }
 
     @Test
