@@ -70,7 +70,9 @@ public class SettlementJob {
                 ledgerEntryRepository.reserveForPayout(vendorId, payout.getId(), cutoff);
 
                 created++;
+                MDC.put("vendorName", vendor.getName());
                 log.info("SettlementJob: created payout {} vendor={} amount={}", payout.getId(), vendor.getName(), amount);
+                MDC.remove("vendorName");
             }
 
             log.info("SettlementJob: completed — {} payout records created", created);

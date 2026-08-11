@@ -28,6 +28,7 @@ public class LedgerService {
         MDC.put("event", "VENDOR_CREDIT");
         MDC.put("orderId", orderId.toString());
         MDC.put("vendorId", vendorId.toString());
+        MDC.put("vendorName", order.getVendor().getName());
         try {
             if (ledgerEntryRepository.existsByOrderIdAndType(orderId, LedgerEntryType.CREDIT)) {
                 log.warn("Duplicate CREDIT attempted for order {} — skipping", orderId);
