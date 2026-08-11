@@ -62,24 +62,5 @@
 
     </springProfile>
 
-    <!-- ── Prod only: forward logs to New Relic ── -->
-    <springProfile name="prod">
-
-        <appender name="NEW_RELIC_BASE" class="com.newrelic.logging.logback.NewRelicAppender">
-            <licenseKey>${NR_INGEST_LICENSE_KEY}</licenseKey>
-            <!-- US region endpoint — change to log-api.eu.newrelic.com for EU accounts -->
-            <logApiUrl>https://log-api.newrelic.com/log/v1</logApiUrl>
-        </appender>
-
-        <appender name="NEW_RELIC" class="com.newrelic.logging.logback.NewRelicAsyncAppender">
-            <appender-ref ref="NEW_RELIC_BASE"/>
-        </appender>
-
-        <root level="WARN">
-            <appender-ref ref="NEW_RELIC"/>
-        </root>
-        <logger name="com.skipq" level="INFO"/>
-
-    </springProfile>
 
 </configuration>

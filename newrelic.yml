@@ -4,7 +4,8 @@
 
 common: &default_settings
 
-  license_key: '<%= ENV["NR_INGEST_LICENSE_KEY"] %>'
+  # Set NEW_RELIC_LICENSE_KEY env var on the server — Java agent reads it automatically
+  license_key: 'replace-with-env-var'
 
   app_name: SkipQ Backend
 
@@ -15,7 +16,7 @@ common: &default_settings
 
   transaction_tracer:
     enabled: true
-    transaction_threshold: 500ms
+    transaction_threshold: 0.5
 
   error_collector:
     enabled: true
