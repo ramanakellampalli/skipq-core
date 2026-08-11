@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -85,6 +86,18 @@ class SettlementJobTest {
         settlementJob.runDailySettlement();
 
         verify(vendorPayoutRepository, never()).save(any());
+    }
+
+    @Test
+    void runDailySettlement_repositoryFailure_rethrowsException() {
+        when(ledgerEntryRepository.sumUnsettledByVendorBeforeCutoff(any()))
+                .thenThrow(new RuntimeException("DB connection lost"));
+
+        assertThatThrownBy(() -> settlementJob.runDailySettlement())
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("DB connection lost");
+
+        verify(vendorPayoutRepository, never()).saveAndFlush(any());
     }
 
     @Test

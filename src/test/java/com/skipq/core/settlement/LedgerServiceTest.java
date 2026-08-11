@@ -13,7 +13,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import org.slf4j.MDC;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -72,6 +75,22 @@ class LedgerServiceTest {
 
         verify(ledgerEntryRepository, never()).save(any());
         verify(vendorLedgerRepository, never()).upsertBalance(any(), any());
+    }
+
+    @Test
+    void creditVendor_mdcClearedAfterException() {
+        UUID vendorId = UUID.randomUUID();
+        Order order = buildOrder(vendorId);
+        when(ledgerEntryRepository.existsByOrderIdAndType(order.getId(), LedgerEntryType.CREDIT))
+                .thenReturn(false);
+        when(ledgerEntryRepository.save(any())).thenThrow(new RuntimeException("DB error"));
+
+        assertThatThrownBy(() -> ledgerService.creditVendor(order))
+                .isInstanceOf(RuntimeException.class);
+
+        assertThat(MDC.get("event")).isNull();
+        assertThat(MDC.get("orderId")).isNull();
+        assertThat(MDC.get("vendorId")).isNull();
     }
 
     @Test

@@ -1,0 +1,29 @@
+# New Relic Java Agent Configuration
+# Place this file alongside newrelic.jar on the server: /opt/skipq/newrelic/newrelic.yml
+# License key is read from the NR_INGEST_LICENSE_KEY environment variable — never hardcode it here.
+
+common: &default_settings
+
+  license_key: '<%= ENV["NR_INGEST_LICENSE_KEY"] %>'
+
+  app_name: SkipQ Backend
+
+  distributed_tracing:
+    enabled: true
+
+  log_level: info
+
+  transaction_tracer:
+    enabled: true
+    transaction_threshold: 500ms
+
+  error_collector:
+    enabled: true
+    # Don't alert on expected client errors — only real server faults
+    ignore_status_codes: 401, 403, 404
+
+  attributes:
+    enabled: true
+
+production:
+  <<: *default_settings

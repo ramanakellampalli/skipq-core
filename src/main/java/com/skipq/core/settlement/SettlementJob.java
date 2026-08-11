@@ -9,6 +9,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.slf4j.MDC;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,47 +30,55 @@ public class SettlementJob {
     @SchedulerLock(name = "daily_settlement_job", lockAtMostFor = "PT10M")
     @Transactional
     public void runDailySettlement() {
-        LocalDateTime cutoff        = LocalDate.now().minusDays(1).atTime(23, 59, 59);
-        LocalDateTime settlementStart = LocalDate.now().minusDays(1).atStartOfDay();
+        MDC.put("event", "SETTLEMENT_JOB");
+        try {
+            LocalDateTime cutoff          = LocalDate.now().minusDays(1).atTime(23, 59, 59);
+            LocalDateTime settlementStart = LocalDate.now().minusDays(1).atStartOfDay();
 
-        log.info("SettlementJob: running for cutoff={}", cutoff);
+            log.info("SettlementJob: running for cutoff={}", cutoff);
 
-        List<Object[]> vendorTotals = ledgerEntryRepository.sumUnsettledByVendorBeforeCutoff(cutoff);
+            List<Object[]> vendorTotals = ledgerEntryRepository.sumUnsettledByVendorBeforeCutoff(cutoff);
 
-        int created = 0;
-        for (Object[] row : vendorTotals) {
-            UUID vendorId = (UUID) row[0];
-            BigDecimal amount = (BigDecimal) row[1];
+            int created = 0;
+            for (Object[] row : vendorTotals) {
+                UUID vendorId = (UUID) row[0];
+                BigDecimal amount = (BigDecimal) row[1];
 
-            if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-                log.warn("SettlementJob: vendor {} has zero/negative net — skipping", vendorId);
-                continue;
+                if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+                    log.warn("SettlementJob: vendor {} has zero/negative net — skipping", vendorId);
+                    continue;
+                }
+
+                Vendor vendor = vendorRepository.findById(vendorId).orElse(null);
+                if (vendor == null) {
+                    log.error("SettlementJob: vendor {} not found — skipping", vendorId);
+                    continue;
+                }
+
+                VendorPayout payout = VendorPayout.builder()
+                        .vendor(vendor)
+                        .amount(amount)
+                        .settlementStartAt(settlementStart)
+                        .settlementCutoffAt(cutoff)
+                        .status(PayoutStatus.PENDING)
+                        .build();
+
+                vendorPayoutRepository.saveAndFlush(payout);
+
+                // Reserve entries immediately so a re-run cannot count them again.
+                // Entries remain settled=false until admin confirms the bank transfer.
+                ledgerEntryRepository.reserveForPayout(vendorId, payout.getId(), cutoff);
+
+                created++;
+                log.info("SettlementJob: created payout {} vendor={} amount={}", payout.getId(), vendor.getName(), amount);
             }
 
-            Vendor vendor = vendorRepository.findById(vendorId).orElse(null);
-            if (vendor == null) {
-                log.error("SettlementJob: vendor {} not found — skipping", vendorId);
-                continue;
-            }
-
-            VendorPayout payout = VendorPayout.builder()
-                    .vendor(vendor)
-                    .amount(amount)
-                    .settlementStartAt(settlementStart)
-                    .settlementCutoffAt(cutoff)
-                    .status(PayoutStatus.PENDING)
-                    .build();
-
-            vendorPayoutRepository.saveAndFlush(payout);
-
-            // Reserve entries immediately so a re-run cannot count them again.
-            // Entries remain settled=false until admin confirms the bank transfer.
-            ledgerEntryRepository.reserveForPayout(vendorId, payout.getId(), cutoff);
-
-            created++;
-            log.info("SettlementJob: created payout {} vendor={} amount={}", payout.getId(), vendor.getName(), amount);
+            log.info("SettlementJob: completed — {} payout records created", created);
+        } catch (Exception e) {
+            log.error("SettlementJob: failed — no payouts created this run", e);
+            throw e;
+        } finally {
+            MDC.remove("event");
         }
-
-        log.info("SettlementJob: completed — {} payout records created", created);
     }
 }

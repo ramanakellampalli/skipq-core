@@ -73,6 +73,7 @@ jobs:
           FIREBASE_PROJECT_ID=skipq-0521
           GOOGLE_APPLICATION_CREDENTIALS=/home/ubuntu/skipq/firebase-service-account.json
           OTEL_SDK_DISABLED=true
+          NR_INGEST_LICENSE_KEY=${{ secrets.NR_INGEST_LICENSE_KEY }}
           ENVEOF
           sudo systemctl restart skipq-core
           EOF
