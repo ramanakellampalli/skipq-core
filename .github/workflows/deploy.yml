@@ -47,6 +47,12 @@ jobs:
             target/skipq-core-0.0.1-SNAPSHOT.jar \
             ubuntu@${{ secrets.ORACLE_PROD_HOST }}:/home/ubuntu/skipq/skipq-core.jar
 
+      - name: Update New Relic config with license key
+        run: |
+          ssh -i ~/.ssh/oracle-prod.key ubuntu@${{ secrets.ORACLE_PROD_HOST }} \
+            "sed -i \"s|license_key: '.*'|license_key: '${{ secrets.NR_INGEST_LICENSE_KEY }}'|\" \
+            /opt/skipq/newrelic/newrelic/newrelic.yml"
+
       - name: Write env file and restart service
         run: |
           ssh -i ~/.ssh/oracle-prod.key ubuntu@${{ secrets.ORACLE_PROD_HOST }} << 'EOF'
