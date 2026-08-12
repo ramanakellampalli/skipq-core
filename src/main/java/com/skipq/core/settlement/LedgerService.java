@@ -35,7 +35,7 @@ public class LedgerService {
                 return;
             }
 
-            BigDecimal vendorShare = order.getTotalAmount().subtract(order.getPlatformFee());
+            BigDecimal vendorShare = order.getTotalAmount().subtract(order.getTotalServiceFee());
 
             ledgerEntryRepository.save(LedgerEntry.builder()
                     .vendorId(vendorId)

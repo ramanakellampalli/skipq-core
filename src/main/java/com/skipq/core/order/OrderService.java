@@ -37,8 +37,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class OrderService {
 
-    private static final BigDecimal GST_RATE      = new BigDecimal("0.025");
-    private static final BigDecimal PLATFORM_RATE = new BigDecimal("0.03");
+    private static final BigDecimal GST_RATE          = new BigDecimal("0.025");
+    private static final BigDecimal PLATFORM_RATE     = new BigDecimal("0.03");
+    private static final BigDecimal CONVENIENCE_RATE  = new BigDecimal("0.02");
 
     private static final String CH_VENDOR  = "vendor:";
     private static final String CH_ORDER   = "order:";
@@ -142,9 +143,11 @@ public class OrderService {
         BigDecimal cgst        = vendor.isGstRegistered() ? subtotal.multiply(GST_RATE).setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
         BigDecimal sgst        = vendor.isGstRegistered() ? subtotal.multiply(GST_RATE).setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
         BigDecimal taxAmount   = cgst.add(sgst);
-        BigDecimal platformFee = subtotal.multiply(PLATFORM_RATE).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal totalAmount = subtotal.add(taxAmount).add(platformFee);
-        long amountPaise       = totalAmount.multiply(BigDecimal.valueOf(100)).longValue();
+        BigDecimal platformFee    = subtotal.multiply(PLATFORM_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal convenienceFee = subtotal.multiply(CONVENIENCE_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalServiceFee = platformFee.add(convenienceFee);
+        BigDecimal totalAmount    = subtotal.add(taxAmount).add(totalServiceFee);
+        long amountPaise          = totalAmount.multiply(BigDecimal.valueOf(100)).longValue();
 
         // Persist the order first so JPA assigns the UUID via @GeneratedValue.
         // If Razorpay fails after save, @Transactional rolls the insert back automatically.
@@ -161,7 +164,7 @@ public class OrderService {
                 .igst(BigDecimal.ZERO)
                 .taxAmount(taxAmount)
                 .platformFee(platformFee)
-                .totalServiceFee(platformFee)
+                .totalServiceFee(totalServiceFee)
                 .totalAmount(totalAmount)
                 .estimatedReadyAt(LocalDateTime.now().plusMinutes(vendor.getPrepTime()))
                 .build();

@@ -118,8 +118,8 @@ class OrderServiceTest {
                 .igst(BigDecimal.ZERO)
                 .taxAmount(BigDecimal.ZERO)
                 .platformFee(new BigDecimal("3.00"))
-                .totalServiceFee(new BigDecimal("3.00"))
-                .totalAmount(new BigDecimal("103.00"))
+                .totalServiceFee(new BigDecimal("5.00"))
+                .totalAmount(new BigDecimal("105.00"))
                 .estimatedReadyAt(LocalDateTime.now().plusMinutes(10))
                 .items(new ArrayList<>())
                 .build();
@@ -147,8 +147,8 @@ class OrderServiceTest {
         assertThat(response.razorpayOrderId()).isEqualTo("order_rzp123");
         assertThat(response.razorpayKeyId()).isEqualTo("rzp_test_key");
         assertThat(response.orderId()).isNotNull();
-        // ₹20 item, 3% platform fee = ₹0.60, total ₹20.60 → 2060 paise
-        assertThat(response.razorpayAmountPaise()).isEqualTo(2060L);
+        // ₹20 item, 5% service fee (3% platform + 2% convenience) = ₹1.00, total ₹21.00 → 2100 paise
+        assertThat(response.razorpayAmountPaise()).isEqualTo(2100L);
     }
 
     @Test
@@ -170,8 +170,8 @@ class OrderServiceTest {
         var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), v.getId(), 1)), null);
         PlaceOrderResponse response = orderService.placeOrder(userId, request);
 
-        // ₹150 variant, 3% platform fee = ₹4.50, total ₹154.50 → 15450 paise
-        assertThat(response.razorpayAmountPaise()).isEqualTo(15450L);
+        // ₹150 variant, 5% service fee = ₹7.50, total ₹157.50 → 15750 paise
+        assertThat(response.razorpayAmountPaise()).isEqualTo(15750L);
     }
 
     @Test
@@ -577,8 +577,8 @@ class OrderServiceTest {
 
         orderService.updateStatus(userId, order.getId(), OrderStatus.REJECTED);
 
-        // totalAmount is 103 → 10300 paise
-        verify(razorpayService).refund("pay_rej123", 10300L);
+        // totalAmount is 105 → 10500 paise
+        verify(razorpayService).refund("pay_rej123", 10500L);
         assertThat(order.getPaymentStatus()).isEqualTo(PaymentStatus.REFUNDED);
         assertThat(order.getStatus()).isEqualTo(OrderStatus.REJECTED);
         verify(orderRepository).save(order);

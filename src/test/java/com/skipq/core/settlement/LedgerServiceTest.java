@@ -34,12 +34,12 @@ class LedgerServiceTest {
         return Order.builder()
                 .id(UUID.randomUUID())
                 .vendor(vendor)
-                .totalAmount(new BigDecimal("103.00"))
+                .totalAmount(new BigDecimal("105.00"))
                 .platformFee(new BigDecimal("3.00"))
                 .subtotal(new BigDecimal("100.00"))
                 .cgst(BigDecimal.ZERO).sgst(BigDecimal.ZERO).igst(BigDecimal.ZERO)
                 .taxAmount(BigDecimal.ZERO)
-                .totalServiceFee(new BigDecimal("3.00"))
+                .totalServiceFee(new BigDecimal("5.00"))
                 .build();
     }
 
@@ -101,12 +101,12 @@ class LedgerServiceTest {
         Order order = Order.builder()
                 .id(UUID.randomUUID())
                 .vendor(vendor)
-                .totalAmount(new BigDecimal("206.00"))
+                .totalAmount(new BigDecimal("210.00"))
                 .platformFee(new BigDecimal("6.00"))
                 .subtotal(new BigDecimal("200.00"))
                 .cgst(BigDecimal.ZERO).sgst(BigDecimal.ZERO).igst(BigDecimal.ZERO)
                 .taxAmount(BigDecimal.ZERO)
-                .totalServiceFee(new BigDecimal("6.00"))
+                .totalServiceFee(new BigDecimal("10.00"))
                 .build();
         when(ledgerEntryRepository.existsByOrderIdAndType(order.getId(), LedgerEntryType.CREDIT))
                 .thenReturn(false);

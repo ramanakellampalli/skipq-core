@@ -40,6 +40,7 @@ public record OrderResponse(
 
     public record Fees(
             BigDecimal platformFee,
+            BigDecimal convenienceFee,
             BigDecimal totalServiceFee
     ) {}
 
