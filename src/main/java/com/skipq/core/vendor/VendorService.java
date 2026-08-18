@@ -17,6 +17,8 @@ import com.skipq.core.settlement.VendorPayoutRepository;
 import com.skipq.core.settlement.dto.VendorPayoutSummary;
 import com.skipq.core.support.ServiceRequestService;
 import com.skipq.core.support.dto.ServiceRequestResponse;
+import com.skipq.core.subscription.SubscriptionPaymentRepository;
+import com.skipq.core.vendor.dto.SubscriptionInfo;
 import com.skipq.core.vendor.dto.UpdateVendorRequest;
 import com.skipq.core.vendor.dto.VendorDashboardResponse;
 import com.skipq.core.vendor.dto.VendorResponse;
@@ -44,6 +46,7 @@ public class VendorService {
     private final OrderMapper orderMapper;
     private final VendorLedgerRepository vendorLedgerRepository;
     private final VendorPayoutRepository vendorPayoutRepository;
+    private final SubscriptionPaymentRepository subscriptionPaymentRepository;
 
     public VendorResponse getProfile(UUID userId) {
         return toResponse(findByUserId(userId));
@@ -90,8 +93,13 @@ public class VendorService {
                 .findTop10ByVendorId(vendor.getId())
                 .stream().map(VendorPayoutSummary::from).toList();
 
-        return new VendorDashboardResponse(toResponse(vendor), activeOrders, pastOrders, items, serviceRequests,
-                availableBalance, recentPayouts);
+        String lastPaymentRef = subscriptionPaymentRepository
+                .findFirstByVendorIdOrderByPaidOnDesc(vendor.getId())
+                .map(p -> p.getPaymentReference())
+                .orElse(null);
+
+        return new VendorDashboardResponse(toResponseWithPaymentRef(vendor, lastPaymentRef), activeOrders, pastOrders,
+                items, serviceRequests, availableBalance, recentPayouts);
     }
 
     public List<VendorResponse> getOpenVendors() {
@@ -137,13 +145,23 @@ public class VendorService {
                 .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
     }
 
-    private VendorResponse toResponse(Vendor vendor) {
+    public VendorResponse toResponse(Vendor vendor) {
+        return toResponseWithPaymentRef(vendor, null);
+    }
+
+    private VendorResponse toResponseWithPaymentRef(Vendor vendor, String lastPaymentRef) {
         var campus = vendor.getCampus();
+        var subscription = new SubscriptionInfo(
+                vendor.computedSubscriptionStatus(),
+                vendor.getSubscriptionMonthlyPrice(),
+                vendor.getSubscriptionPaidThrough(),
+                lastPaymentRef
+        );
         return new VendorResponse(vendor.getId(), vendor.getName(), vendor.isOpen(), vendor.getPrepTime(),
                 vendor.getBusinessName(), vendor.isGstRegistered(), vendor.getGstin(), vendor.isKycApproved(),
                 campus != null ? campus.getId() : null,
                 campus != null ? campus.getName() : null,
                 vendor.getAccountStatus(), vendor.getSuspensionNote(), vendor.getLogoUrl(),
-                vendor.getCity(), vendor.getPhone());
+                vendor.getCity(), vendor.getPhone(), subscription);
     }
 }

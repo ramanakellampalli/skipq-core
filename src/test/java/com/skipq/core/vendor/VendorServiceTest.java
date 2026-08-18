@@ -14,6 +14,7 @@ import com.skipq.core.settlement.VendorLedgerRepository;
 import com.skipq.core.settlement.VendorPayout;
 import com.skipq.core.settlement.VendorPayoutRepository;
 import com.skipq.core.settlement.dto.VendorPayoutSummary;
+import com.skipq.core.subscription.SubscriptionPaymentRepository;
 import com.skipq.core.support.ServiceRequestService;
 import com.skipq.core.vendor.dto.VendorDashboardResponse;
 import com.skipq.core.vendor.dto.VendorResponse;
@@ -48,6 +49,7 @@ class VendorServiceTest {
     @Mock OrderMapper orderMapper;
     @Mock VendorLedgerRepository vendorLedgerRepository;
     @Mock VendorPayoutRepository vendorPayoutRepository;
+    @Mock SubscriptionPaymentRepository subscriptionPaymentRepository;
 
     @InjectMocks VendorService vendorService;
 
@@ -184,11 +186,11 @@ class VendorServiceTest {
     }
 
     private void stubSyncDependencies(Vendor vendor) {
-        UUID userId = UUID.randomUUID();
         when(orderRepository.findAllByVendorUserIdWithItems(any())).thenReturn(List.of());
         when(vendorRepository.findByUserId(any())).thenReturn(Optional.of(vendor));
         when(menuItemRepository.findAllByVendorIdWithVariants(vendor.getId())).thenReturn(List.of());
         when(serviceRequestService.findByUser(any())).thenReturn(List.of());
+        when(subscriptionPaymentRepository.findFirstByVendorIdOrderByPaidOnDesc(any())).thenReturn(Optional.empty());
     }
 
     @Test

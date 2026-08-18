@@ -13,9 +13,14 @@ import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.settlement.VendorLedger;
 import com.skipq.core.settlement.VendorLedgerRepository;
+import com.skipq.core.subscription.SubscriptionPaymentRepository;
 import com.skipq.core.support.ServiceRequestService;
+import com.skipq.core.vendor.SubscriptionStatus;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
+import com.skipq.core.vendor.VendorService;
+import com.skipq.core.vendor.dto.SubscriptionInfo;
+import com.skipq.core.vendor.dto.VendorResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,6 +56,8 @@ class AdminServiceTest {
     @Mock PasswordEncoder passwordEncoder;
     @Mock ServiceRequestService serviceRequestService;
     @Mock VendorLedgerRepository vendorLedgerRepository;
+    @Mock SubscriptionPaymentRepository subscriptionPaymentRepository;
+    @Mock VendorService vendorService;
 
     @InjectMocks AdminService adminService;
 
@@ -61,7 +68,7 @@ class AdminServiceTest {
                 "City Cafe", "owner@gmail.com", "Priya", 10,
                 null, city, "+91 90000 00001",
                 "City Cafe Pvt Ltd", "ABCDE1234F", "123456789012", "SBIN0001234",
-                false, null);
+                false, null, null);
     }
 
     private static CreateVendorRequest campusRequest(UUID campusId) {
@@ -69,7 +76,7 @@ class AdminServiceTest {
                 "Campus Stall", "owner@campus.edu", "Ramana", 15,
                 campusId, null, "+91 90000 00001",
                 "Campus Stall Pvt Ltd", "XYZPQ5678G", "987654321098", "HDFC0000001",
-                true, "29ABCDE1234F1Z5");
+                true, "29ABCDE1234F1Z5", null);
     }
 
     @BeforeEach
@@ -257,6 +264,12 @@ class AdminServiceTest {
         when(projection.getTotalOrders()).thenReturn(0L);
         when(projection.getRevenue()).thenReturn(java.math.BigDecimal.ZERO);
         when(projection.getInProgress()).thenReturn(0L);
+
+        var subscription = new SubscriptionInfo(SubscriptionStatus.ACTIVE, java.math.BigDecimal.ZERO, null, null);
+        var expectedResponse = new VendorResponse(generalVendor.getId(), "City Cafe", true, 10,
+                null, false, null, false, null, null,
+                AccountStatus.ACTIVE, null, null, "Bangalore", "+91 80000 00002", subscription);
+        when(vendorService.toResponse(generalVendor)).thenReturn(expectedResponse);
 
         when(campusRepository.findAll()).thenReturn(List.of());
         when(vendorRepository.findAll()).thenReturn(List.of(generalVendor));
