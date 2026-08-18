@@ -13,6 +13,7 @@ import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.order.dto.OrderStatsProjection;
+import com.skipq.core.subscription.AdminSubscriptionStatus;
 import com.skipq.core.subscription.SubscriptionPayment;
 import com.skipq.core.subscription.SubscriptionPaymentRepository;
 import com.skipq.core.subscription.dto.RecordSubscriptionPaymentRequest;
@@ -197,6 +198,7 @@ public class AdminService {
             vendor.setSubscriptionMonthlyPrice(request.monthlyPrice());
         }
         if (request.status() != null) {
+            // AdminSubscriptionStatus only contains ACTIVE and SUSPENDED — PAST_DUE cannot be stored
             vendor.setSubscriptionStatus(request.status().name());
         }
         vendorRepository.save(vendor);
@@ -206,6 +208,11 @@ public class AdminService {
 
     @Transactional
     public void recordSubscriptionPayment(UUID vendorId, RecordSubscriptionPaymentRequest request) {
+        if (request.paidForMonth().getDayOfMonth() != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "paidForMonth must be the first day of a month (e.g. 2026-09-01)");
+        }
+
         Vendor vendor = vendorRepository.findById(vendorId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
 
@@ -218,8 +225,12 @@ public class AdminService {
                 .adminNote(request.adminNote())
                 .build());
 
-        LocalDate paidThrough = request.paidForMonth().withDayOfMonth(request.paidForMonth().lengthOfMonth());
-        vendor.setSubscriptionPaidThrough(paidThrough);
+        // Only advance paid_through — never move it backward (e.g. backfill corrections)
+        LocalDate newPaidThrough = request.paidForMonth().withDayOfMonth(request.paidForMonth().lengthOfMonth());
+        LocalDate existing = vendor.getSubscriptionPaidThrough();
+        if (existing == null || newPaidThrough.isAfter(existing)) {
+            vendor.setSubscriptionPaidThrough(newPaidThrough);
+        }
         vendorRepository.save(vendor);
 
         log.info("Vendor {} subscription payment recorded — month={}, amount={}, ref={}",

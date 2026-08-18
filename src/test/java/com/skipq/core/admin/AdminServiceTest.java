@@ -13,7 +13,11 @@ import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.settlement.VendorLedger;
 import com.skipq.core.settlement.VendorLedgerRepository;
+import com.skipq.core.subscription.AdminSubscriptionStatus;
+import com.skipq.core.subscription.SubscriptionPayment;
 import com.skipq.core.subscription.SubscriptionPaymentRepository;
+import com.skipq.core.subscription.dto.RecordSubscriptionPaymentRequest;
+import com.skipq.core.subscription.dto.UpdateSubscriptionRequest;
 import com.skipq.core.support.ServiceRequestService;
 import com.skipq.core.vendor.SubscriptionStatus;
 import com.skipq.core.vendor.Vendor;
@@ -35,6 +39,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -326,6 +332,188 @@ class AdminServiceTest {
                 .hasMessageContaining("Vendor not found");
 
         verify(vendorRepository, never()).save(any());
+    }
+
+    // --- updateSubscription ---
+
+    @Test
+    void updateSubscription_updatesPrice() {
+        when(vendorRepository.findById(vendor.getId())).thenReturn(Optional.of(vendor));
+
+        adminService.updateSubscription(vendor.getId(),
+                new UpdateSubscriptionRequest(new BigDecimal("999.00"), null));
+
+        assertThat(vendor.getSubscriptionMonthlyPrice()).isEqualByComparingTo("999.00");
+        verify(vendorRepository).save(vendor);
+    }
+
+    @Test
+    void updateSubscription_setsStatusToSuspended() {
+        when(vendorRepository.findById(vendor.getId())).thenReturn(Optional.of(vendor));
+
+        adminService.updateSubscription(vendor.getId(),
+                new UpdateSubscriptionRequest(null, AdminSubscriptionStatus.SUSPENDED));
+
+        assertThat(vendor.getSubscriptionStatus()).isEqualTo("SUSPENDED");
+        verify(vendorRepository).save(vendor);
+    }
+
+    @Test
+    void updateSubscription_throwsNotFoundWhenVendorMissing() {
+        UUID unknownId = UUID.randomUUID();
+        when(vendorRepository.findById(unknownId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> adminService.updateSubscription(unknownId,
+                new UpdateSubscriptionRequest(null, AdminSubscriptionStatus.ACTIVE)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Vendor not found");
+    }
+
+    // --- recordSubscriptionPayment ---
+
+    @Test
+    void recordSubscriptionPayment_setsPaidThroughToEndOfMonth() {
+        when(vendorRepository.findById(vendor.getId())).thenReturn(Optional.of(vendor));
+
+        adminService.recordSubscriptionPayment(vendor.getId(),
+                new RecordSubscriptionPaymentRequest(
+                        new BigDecimal("999.00"),
+                        LocalDate.of(2026, 9, 1),
+                        "UPI/123",
+                        LocalDate.of(2026, 8, 28),
+                        null));
+
+        assertThat(vendor.getSubscriptionPaidThrough()).isEqualTo(LocalDate.of(2026, 9, 30));
+        verify(subscriptionPaymentRepository).save(any(SubscriptionPayment.class));
+        verify(vendorRepository).save(vendor);
+    }
+
+    @Test
+    void recordSubscriptionPayment_doesNotMovePaidThroughBackward() {
+        vendor.setSubscriptionPaidThrough(LocalDate.of(2026, 12, 31));
+        when(vendorRepository.findById(vendor.getId())).thenReturn(Optional.of(vendor));
+
+        adminService.recordSubscriptionPayment(vendor.getId(),
+                new RecordSubscriptionPaymentRequest(
+                        new BigDecimal("999.00"),
+                        LocalDate.of(2026, 9, 1),
+                        "UPI/backfill",
+                        LocalDate.of(2026, 9, 1),
+                        "Backfill correction"));
+
+        assertThat(vendor.getSubscriptionPaidThrough()).isEqualTo(LocalDate.of(2026, 12, 31));
+    }
+
+    @Test
+    void recordSubscriptionPayment_advancesPaidThroughWhenNewer() {
+        vendor.setSubscriptionPaidThrough(LocalDate.of(2026, 8, 31));
+        when(vendorRepository.findById(vendor.getId())).thenReturn(Optional.of(vendor));
+
+        adminService.recordSubscriptionPayment(vendor.getId(),
+                new RecordSubscriptionPaymentRequest(
+                        new BigDecimal("999.00"),
+                        LocalDate.of(2026, 9, 1),
+                        "UPI/456",
+                        LocalDate.of(2026, 9, 1),
+                        null));
+
+        assertThat(vendor.getSubscriptionPaidThrough()).isEqualTo(LocalDate.of(2026, 9, 30));
+    }
+
+    @Test
+    void recordSubscriptionPayment_rejectsMidMonthPaidForMonth() {
+        assertThatThrownBy(() -> adminService.recordSubscriptionPayment(vendor.getId(),
+                new RecordSubscriptionPaymentRequest(
+                        new BigDecimal("999.00"),
+                        LocalDate.of(2026, 9, 15),
+                        null,
+                        LocalDate.of(2026, 9, 15),
+                        null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("first day");
+
+        verify(vendorRepository, never()).findById(any());
+    }
+
+    @Test
+    void recordSubscriptionPayment_throwsNotFoundWhenVendorMissing() {
+        UUID unknownId = UUID.randomUUID();
+        when(vendorRepository.findById(unknownId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> adminService.recordSubscriptionPayment(unknownId,
+                new RecordSubscriptionPaymentRequest(
+                        new BigDecimal("999.00"),
+                        LocalDate.of(2026, 9, 1),
+                        null,
+                        LocalDate.of(2026, 9, 1),
+                        null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Vendor not found");
+    }
+
+    // --- getSubscriptionPayments ---
+
+    @Test
+    void getSubscriptionPayments_returnsMappedList() {
+        SubscriptionPayment payment = SubscriptionPayment.builder()
+                .id(UUID.randomUUID())
+                .vendorId(vendor.getId())
+                .amount(new BigDecimal("999.00"))
+                .paidForMonth(LocalDate.of(2026, 9, 1))
+                .paidOn(LocalDate.of(2026, 8, 28))
+                .paymentReference("UPI/123")
+                .build();
+        when(vendorRepository.existsById(vendor.getId())).thenReturn(true);
+        when(subscriptionPaymentRepository.findAllByVendorIdOrderByPaidOnDesc(vendor.getId()))
+                .thenReturn(List.of(payment));
+
+        var result = adminService.getSubscriptionPayments(vendor.getId());
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).amount()).isEqualByComparingTo("999.00");
+        assertThat(result.get(0).paymentReference()).isEqualTo("UPI/123");
+    }
+
+    @Test
+    void getSubscriptionPayments_throwsNotFoundWhenVendorMissing() {
+        UUID unknownId = UUID.randomUUID();
+        when(vendorRepository.existsById(unknownId)).thenReturn(false);
+
+        assertThatThrownBy(() -> adminService.getSubscriptionPayments(unknownId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Vendor not found");
+    }
+
+    // --- getVendors ---
+
+    @Test
+    void getVendors_noFilter_returnsAll() {
+        var sub = new SubscriptionInfo(SubscriptionStatus.ACTIVE, BigDecimal.ZERO, null, null);
+        var vr = new VendorResponse(vendor.getId(), "Stall", true, 10, null, false, null, false,
+                null, null, AccountStatus.ACTIVE, null, null, null, null, sub);
+        when(vendorRepository.findAll()).thenReturn(List.of(vendor));
+        when(vendorService.toResponse(vendor)).thenReturn(vr);
+
+        assertThat(adminService.getVendors(null)).hasSize(1);
+    }
+
+    @Test
+    void getVendors_filterByPastDue_returnsOnlyMatchingVendors() {
+        Vendor v2 = Vendor.builder().id(UUID.randomUUID()).build();
+        var pastDueSub = new SubscriptionInfo(SubscriptionStatus.PAST_DUE, new BigDecimal("999"), null, null);
+        var activeSub  = new SubscriptionInfo(SubscriptionStatus.ACTIVE, BigDecimal.ZERO, null, null);
+        var vrPastDue = new VendorResponse(vendor.getId(), "Stall1", true, 10, null, false, null, false,
+                null, null, AccountStatus.ACTIVE, null, null, null, null, pastDueSub);
+        var vrActive  = new VendorResponse(v2.getId(), "Stall2", true, 10, null, false, null, false,
+                null, null, AccountStatus.ACTIVE, null, null, null, null, activeSub);
+        when(vendorRepository.findAll()).thenReturn(List.of(vendor, v2));
+        when(vendorService.toResponse(vendor)).thenReturn(vrPastDue);
+        when(vendorService.toResponse(v2)).thenReturn(vrActive);
+
+        var result = adminService.getVendors("PAST_DUE");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).subscription().status()).isEqualTo(SubscriptionStatus.PAST_DUE);
     }
 
 }
