@@ -18,6 +18,7 @@ import com.skipq.core.settlement.dto.VendorPayoutSummary;
 import com.skipq.core.support.ServiceRequestService;
 import com.skipq.core.support.dto.ServiceRequestResponse;
 import com.skipq.core.subscription.SubscriptionPaymentRepository;
+import com.skipq.core.subscription.dto.SubscriptionPaymentResponse;
 import com.skipq.core.vendor.dto.SubscriptionInfo;
 import com.skipq.core.vendor.dto.UpdateVendorRequest;
 import com.skipq.core.vendor.dto.VendorDashboardResponse;
@@ -93,13 +94,15 @@ public class VendorService {
                 .findTop10ByVendorId(vendor.getId())
                 .stream().map(VendorPayoutSummary::from).toList();
 
-        String lastPaymentRef = subscriptionPaymentRepository
-                .findFirstByVendorIdOrderByPaidOnDesc(vendor.getId())
-                .map(p -> p.getPaymentReference())
-                .orElse(null);
+        List<SubscriptionPaymentResponse> subscriptionPayments = subscriptionPaymentRepository
+                .findAllByVendorIdOrderByPaidOnDesc(vendor.getId())
+                .stream().map(SubscriptionPaymentResponse::from).toList();
+
+        String lastPaymentRef = subscriptionPayments.isEmpty() ? null
+                : subscriptionPayments.get(0).paymentReference();
 
         return new VendorDashboardResponse(toResponseWithPaymentRef(vendor, lastPaymentRef), activeOrders, pastOrders,
-                items, serviceRequests, availableBalance, recentPayouts);
+                items, serviceRequests, availableBalance, recentPayouts, subscriptionPayments);
     }
 
     public List<VendorResponse> getOpenVendors() {
