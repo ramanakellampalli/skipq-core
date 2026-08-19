@@ -18,6 +18,7 @@ import com.skipq.core.settlement.dto.VendorPayoutSummary;
 import com.skipq.core.support.ServiceRequestService;
 import com.skipq.core.support.dto.ServiceRequestResponse;
 import com.skipq.core.subscription.SubscriptionPaymentRepository;
+import com.skipq.core.subscription.dto.SubscriptionPaymentResponse;
 import com.skipq.core.vendor.dto.SubscriptionInfo;
 import com.skipq.core.vendor.dto.UpdateVendorRequest;
 import com.skipq.core.vendor.dto.VendorDashboardResponse;
@@ -143,6 +144,13 @@ public class VendorService {
     private Vendor findByUserId(UUID userId) {
         return vendorRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
+    }
+
+    public List<SubscriptionPaymentResponse> getSubscriptionPayments(UUID userId) {
+        Vendor vendor = findByUserId(userId);
+        return subscriptionPaymentRepository
+                .findAllByVendorIdOrderByPaidOnDesc(vendor.getId())
+                .stream().map(SubscriptionPaymentResponse::from).toList();
     }
 
     public VendorResponse toResponse(Vendor vendor) {

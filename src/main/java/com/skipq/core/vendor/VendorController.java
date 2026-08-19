@@ -1,5 +1,6 @@
 package com.skipq.core.vendor;
 
+import com.skipq.core.subscription.dto.SubscriptionPaymentResponse;
 import com.skipq.core.vendor.dto.UpdateVendorRequest;
 import com.skipq.core.vendor.dto.VendorDashboardResponse;
 import com.skipq.core.vendor.dto.VendorResponse;
@@ -49,6 +50,13 @@ public class VendorController {
     @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
     public VendorResponse getVendor(@PathVariable UUID vendorId) {
         return vendorService.getById(vendorId);
+    }
+
+    @GetMapping("/api/v1/vendor/subscription/payments")
+    @PreAuthorize("hasRole('VENDOR')")
+    public List<SubscriptionPaymentResponse> getSubscriptionPayments(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return vendorService.getSubscriptionPayments(userId(userDetails));
     }
 
     @DeleteMapping("/api/v1/vendor/account")
