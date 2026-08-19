@@ -13,7 +13,6 @@ import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.settlement.VendorLedger;
 import com.skipq.core.settlement.VendorLedgerRepository;
-import com.skipq.core.subscription.AdminSubscriptionStatus;
 import com.skipq.core.subscription.SubscriptionPayment;
 import com.skipq.core.subscription.SubscriptionPaymentRepository;
 import com.skipq.core.subscription.dto.RecordSubscriptionPaymentRequest;
@@ -341,20 +340,9 @@ class AdminServiceTest {
         when(vendorRepository.findById(vendor.getId())).thenReturn(Optional.of(vendor));
 
         adminService.updateSubscription(vendor.getId(),
-                new UpdateSubscriptionRequest(new BigDecimal("999.00"), null));
+                new UpdateSubscriptionRequest(new BigDecimal("999.00")));
 
         assertThat(vendor.getSubscriptionMonthlyPrice()).isEqualByComparingTo("999.00");
-        verify(vendorRepository).save(vendor);
-    }
-
-    @Test
-    void updateSubscription_setsStatusToSuspended() {
-        when(vendorRepository.findById(vendor.getId())).thenReturn(Optional.of(vendor));
-
-        adminService.updateSubscription(vendor.getId(),
-                new UpdateSubscriptionRequest(null, AdminSubscriptionStatus.SUSPENDED));
-
-        assertThat(vendor.getSubscriptionStatus()).isEqualTo("SUSPENDED");
         verify(vendorRepository).save(vendor);
     }
 
@@ -364,7 +352,7 @@ class AdminServiceTest {
         when(vendorRepository.findById(unknownId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> adminService.updateSubscription(unknownId,
-                new UpdateSubscriptionRequest(null, AdminSubscriptionStatus.ACTIVE)))
+                new UpdateSubscriptionRequest(new BigDecimal("999.00"))))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Vendor not found");
     }

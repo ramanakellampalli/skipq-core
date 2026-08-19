@@ -13,7 +13,6 @@ import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.order.dto.OrderStatsProjection;
-import com.skipq.core.subscription.AdminSubscriptionStatus;
 import com.skipq.core.subscription.SubscriptionPayment;
 import com.skipq.core.subscription.SubscriptionPaymentRepository;
 import com.skipq.core.subscription.dto.RecordSubscriptionPaymentRequest;
@@ -197,13 +196,8 @@ public class AdminService {
         if (request.monthlyPrice() != null) {
             vendor.setSubscriptionMonthlyPrice(request.monthlyPrice());
         }
-        if (request.status() != null) {
-            // AdminSubscriptionStatus only contains ACTIVE and SUSPENDED — PAST_DUE cannot be stored
-            vendor.setSubscriptionStatus(request.status().name());
-        }
         vendorRepository.save(vendor);
-        log.info("Vendor {} subscription updated — price={}, status={}", vendorId,
-                request.monthlyPrice(), request.status());
+        log.info("Vendor {} subscription price updated — price={}", vendorId, request.monthlyPrice());
     }
 
     @Transactional
