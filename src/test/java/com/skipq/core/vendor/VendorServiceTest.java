@@ -192,7 +192,7 @@ class VendorServiceTest {
         when(vendorRepository.findByUserId(any())).thenReturn(Optional.of(vendor));
         when(menuItemRepository.findAllByVendorIdWithVariants(vendor.getId())).thenReturn(List.of());
         when(serviceRequestService.findByUser(any())).thenReturn(List.of());
-        when(subscriptionPaymentRepository.findFirstByVendorIdOrderByPaidOnDesc(any())).thenReturn(Optional.empty());
+        when(subscriptionPaymentRepository.findAllByVendorIdOrderByPaidOnDesc(any())).thenReturn(List.of());
     }
 
     @Test
