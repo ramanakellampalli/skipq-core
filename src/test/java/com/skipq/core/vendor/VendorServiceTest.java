@@ -265,17 +265,6 @@ class VendorServiceTest {
     // --- computedSubscriptionStatus ---
 
     @Test
-    void computedStatus_storedSuspended_returnsSuspended() {
-        Vendor v = Vendor.builder()
-                .subscriptionStatus("SUSPENDED")
-                .subscriptionMonthlyPrice(new BigDecimal("999.00"))
-                .subscriptionPaidThrough(LocalDate.now().plusDays(10))
-                .build();
-
-        assertThat(v.computedSubscriptionStatus()).isEqualTo(SubscriptionStatus.SUSPENDED);
-    }
-
-    @Test
     void computedStatus_paidPlanNoPaidThrough_returnsPastDue() {
         Vendor v = Vendor.builder()
                 .subscriptionMonthlyPrice(new BigDecimal("999.00"))

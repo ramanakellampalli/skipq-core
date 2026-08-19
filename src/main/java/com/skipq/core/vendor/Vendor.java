@@ -95,16 +95,11 @@ public class Vendor {
     @Column(name = "subscription_paid_through")
     private LocalDate subscriptionPaidThrough;
 
-    @Column(name = "subscription_status", nullable = false, length = 20)
-    @Builder.Default
-    private String subscriptionStatus = "ACTIVE";
-
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     public SubscriptionStatus computedSubscriptionStatus() {
-        if ("SUSPENDED".equals(subscriptionStatus)) return SubscriptionStatus.SUSPENDED;
         if (subscriptionMonthlyPrice.compareTo(BigDecimal.ZERO) > 0) {
             LocalDate firstOfMonth = LocalDate.now().withDayOfMonth(1);
             if (subscriptionPaidThrough == null || subscriptionPaidThrough.isBefore(firstOfMonth)) {
