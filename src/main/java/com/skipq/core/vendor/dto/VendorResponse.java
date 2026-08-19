@@ -1,6 +1,7 @@
 package com.skipq.core.vendor.dto;
 
 import com.skipq.core.common.AccountStatus;
+
 import java.util.UUID;
 
 public record VendorResponse(
@@ -18,5 +19,6 @@ public record VendorResponse(
         String suspensionNote,
         String logoUrl,
         String city,
-        String phone
+        String phone,
+        SubscriptionInfo subscription
 ) {}

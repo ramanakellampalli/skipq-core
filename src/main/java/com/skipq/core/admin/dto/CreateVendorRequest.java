@@ -1,11 +1,6 @@
 package com.skipq.core.admin.dto;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 
 import java.util.UUID;
 
@@ -25,5 +20,7 @@ public record CreateVendorRequest(
 
         boolean gstRegistered,
         @Pattern(regexp = "[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]",
-                 message = "Invalid GSTIN format") String gstin
+                 message = "Invalid GSTIN format") String gstin,
+
+        @PositiveOrZero java.math.BigDecimal subscriptionMonthlyPrice
 ) {}

@@ -14,7 +14,9 @@ import com.skipq.core.settlement.VendorLedgerRepository;
 import com.skipq.core.settlement.VendorPayout;
 import com.skipq.core.settlement.VendorPayoutRepository;
 import com.skipq.core.settlement.dto.VendorPayoutSummary;
+import com.skipq.core.subscription.SubscriptionPaymentRepository;
 import com.skipq.core.support.ServiceRequestService;
+import com.skipq.core.vendor.SubscriptionStatus;
 import com.skipq.core.vendor.dto.VendorDashboardResponse;
 import com.skipq.core.vendor.dto.VendorResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -48,6 +51,7 @@ class VendorServiceTest {
     @Mock OrderMapper orderMapper;
     @Mock VendorLedgerRepository vendorLedgerRepository;
     @Mock VendorPayoutRepository vendorPayoutRepository;
+    @Mock SubscriptionPaymentRepository subscriptionPaymentRepository;
 
     @InjectMocks VendorService vendorService;
 
@@ -184,11 +188,11 @@ class VendorServiceTest {
     }
 
     private void stubSyncDependencies(Vendor vendor) {
-        UUID userId = UUID.randomUUID();
         when(orderRepository.findAllByVendorUserIdWithItems(any())).thenReturn(List.of());
         when(vendorRepository.findByUserId(any())).thenReturn(Optional.of(vendor));
         when(menuItemRepository.findAllByVendorIdWithVariants(vendor.getId())).thenReturn(List.of());
         when(serviceRequestService.findByUser(any())).thenReturn(List.of());
+        when(subscriptionPaymentRepository.findFirstByVendorIdOrderByPaidOnDesc(any())).thenReturn(Optional.empty());
     }
 
     @Test
@@ -256,5 +260,61 @@ class VendorServiceTest {
         VendorDashboardResponse response = vendorService.sync(UUID.randomUUID());
 
         assertThat(response.recentPayouts()).isEmpty();
+    }
+
+    // --- computedSubscriptionStatus ---
+
+    @Test
+    void computedStatus_storedSuspended_returnsSuspended() {
+        Vendor v = Vendor.builder()
+                .subscriptionStatus("SUSPENDED")
+                .subscriptionMonthlyPrice(new BigDecimal("999.00"))
+                .subscriptionPaidThrough(LocalDate.now().plusDays(10))
+                .build();
+
+        assertThat(v.computedSubscriptionStatus()).isEqualTo(SubscriptionStatus.SUSPENDED);
+    }
+
+    @Test
+    void computedStatus_paidPlanNoPaidThrough_returnsPastDue() {
+        Vendor v = Vendor.builder()
+                .subscriptionMonthlyPrice(new BigDecimal("999.00"))
+                .subscriptionPaidThrough(null)
+                .build();
+
+        assertThat(v.computedSubscriptionStatus()).isEqualTo(SubscriptionStatus.PAST_DUE);
+    }
+
+    @Test
+    void computedStatus_paidPlanPaidThroughLastMonth_returnsPastDue() {
+        LocalDate lastDayOfLastMonth = LocalDate.now().minusMonths(1)
+                .withDayOfMonth(LocalDate.now().minusMonths(1).lengthOfMonth());
+        Vendor v = Vendor.builder()
+                .subscriptionMonthlyPrice(new BigDecimal("999.00"))
+                .subscriptionPaidThrough(lastDayOfLastMonth)
+                .build();
+
+        assertThat(v.computedSubscriptionStatus()).isEqualTo(SubscriptionStatus.PAST_DUE);
+    }
+
+    @Test
+    void computedStatus_paidPlanPaidThroughThisMonth_returnsActive() {
+        LocalDate endOfThisMonth = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
+        Vendor v = Vendor.builder()
+                .subscriptionMonthlyPrice(new BigDecimal("999.00"))
+                .subscriptionPaidThrough(endOfThisMonth)
+                .build();
+
+        assertThat(v.computedSubscriptionStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+    }
+
+    @Test
+    void computedStatus_freePlan_alwaysReturnsActive() {
+        Vendor v = Vendor.builder()
+                .subscriptionMonthlyPrice(BigDecimal.ZERO)
+                .subscriptionPaidThrough(null)
+                .build();
+
+        assertThat(v.computedSubscriptionStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
     }
 }

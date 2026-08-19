@@ -13,20 +13,30 @@ import com.skipq.core.order.OrderMapper;
 import com.skipq.core.order.OrderRepository;
 import com.skipq.core.order.dto.OrderResponse;
 import com.skipq.core.order.dto.OrderStatsProjection;
+import com.skipq.core.subscription.AdminSubscriptionStatus;
+import com.skipq.core.subscription.SubscriptionPayment;
+import com.skipq.core.subscription.SubscriptionPaymentRepository;
+import com.skipq.core.subscription.dto.RecordSubscriptionPaymentRequest;
+import com.skipq.core.subscription.dto.SubscriptionPaymentResponse;
+import com.skipq.core.subscription.dto.UpdateSubscriptionRequest;
 import com.skipq.core.support.ServiceRequestService;
 import com.skipq.core.support.dto.AdminServiceRequestResponse;
 import com.skipq.core.settlement.VendorLedger;
 import com.skipq.core.settlement.VendorLedgerRepository;
 import com.skipq.core.vendor.Vendor;
 import com.skipq.core.vendor.VendorRepository;
+import com.skipq.core.vendor.VendorService;
 import com.skipq.core.vendor.dto.VendorResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -47,6 +57,8 @@ public class AdminService {
     private final PasswordEncoder passwordEncoder;
     private final ServiceRequestService serviceRequestService;
     private final VendorLedgerRepository vendorLedgerRepository;
+    private final SubscriptionPaymentRepository subscriptionPaymentRepository;
+    private final VendorService vendorService;
 
     @Value("${otp.bypass:false}")
     private boolean bypass;
@@ -134,6 +146,10 @@ public class AdminService {
                     request.vendorName(), user.getId(), campus != null ? campus.getName() : "general", request.email());
         }
 
+        if (request.subscriptionMonthlyPrice() != null) {
+            vendorBuilder.subscriptionMonthlyPrice(request.subscriptionMonthlyPrice());
+        }
+
         Vendor vendor = vendorRepository.save(vendorBuilder.build());
         vendorLedgerRepository.save(VendorLedger.builder().vendorId(vendor.getId()).build());
     }
@@ -145,12 +161,7 @@ public class AdminService {
                 .toList();
 
         List<VendorResponse> vendors = vendorRepository.findAll().stream()
-                .map(v -> new VendorResponse(v.getId(), v.getName(), v.isOpen(), v.getPrepTime(),
-                        v.getBusinessName(), v.isGstRegistered(), v.getGstin(), v.isKycApproved(),
-                        v.getCampus() != null ? v.getCampus().getId() : null,
-                        v.getCampus() != null ? v.getCampus().getName() : null,
-                        v.getAccountStatus(), v.getSuspensionNote(), v.getLogoUrl(),
-                        v.getCity(), v.getPhone()))
+                .map(vendorService::toResponse)
                 .toList();
 
         List<OrderResponse> orders = orderRepository.findTodaysOrdersWithItems().stream()
@@ -172,12 +183,76 @@ public class AdminService {
     @Transactional
     public void updateVendorStatus(UUID vendorId, UpdateVendorStatusRequest request) {
         Vendor vendor = vendorRepository.findById(vendorId)
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND, "Vendor not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
         vendor.setAccountStatus(request.status());
         vendor.setSuspensionNote(request.status() == AccountStatus.SUSPENDED ? request.note() : null);
         vendorRepository.save(vendor);
-        log.info("Vendor {} status updated to {} by admin", vendorId, request.status());
+        log.info("Vendor {} account status updated to {} by admin", vendorId, request.status());
+    }
+
+    @Transactional
+    public void updateSubscription(UUID vendorId, UpdateSubscriptionRequest request) {
+        Vendor vendor = vendorRepository.findById(vendorId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
+        if (request.monthlyPrice() != null) {
+            vendor.setSubscriptionMonthlyPrice(request.monthlyPrice());
+        }
+        if (request.status() != null) {
+            // AdminSubscriptionStatus only contains ACTIVE and SUSPENDED — PAST_DUE cannot be stored
+            vendor.setSubscriptionStatus(request.status().name());
+        }
+        vendorRepository.save(vendor);
+        log.info("Vendor {} subscription updated — price={}, status={}", vendorId,
+                request.monthlyPrice(), request.status());
+    }
+
+    @Transactional
+    public void recordSubscriptionPayment(UUID vendorId, RecordSubscriptionPaymentRequest request) {
+        if (request.paidForMonth().getDayOfMonth() != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "paidForMonth must be the first day of a month (e.g. 2026-09-01)");
+        }
+
+        Vendor vendor = vendorRepository.findById(vendorId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found"));
+
+        subscriptionPaymentRepository.save(SubscriptionPayment.builder()
+                .vendorId(vendorId)
+                .amount(request.amount())
+                .paymentReference(request.paymentReference())
+                .paidForMonth(request.paidForMonth())
+                .paidOn(request.paidOn())
+                .adminNote(request.adminNote())
+                .build());
+
+        // Only advance paid_through — never move it backward (e.g. backfill corrections)
+        LocalDate newPaidThrough = request.paidForMonth().withDayOfMonth(request.paidForMonth().lengthOfMonth());
+        LocalDate existing = vendor.getSubscriptionPaidThrough();
+        if (existing == null || newPaidThrough.isAfter(existing)) {
+            vendor.setSubscriptionPaidThrough(newPaidThrough);
+        }
+        vendorRepository.save(vendor);
+
+        log.info("Vendor {} subscription payment recorded — month={}, amount={}, ref={}",
+                vendorId, request.paidForMonth(), request.amount(), request.paymentReference());
+    }
+
+    @Transactional(readOnly = true)
+    public List<SubscriptionPaymentResponse> getSubscriptionPayments(UUID vendorId) {
+        if (!vendorRepository.existsById(vendorId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vendor not found");
+        }
+        return subscriptionPaymentRepository.findAllByVendorIdOrderByPaidOnDesc(vendorId)
+                .stream().map(SubscriptionPaymentResponse::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<VendorResponse> getVendors(String subscriptionStatus) {
+        return vendorRepository.findAll().stream()
+                .map(vendorService::toResponse)
+                .filter(v -> subscriptionStatus == null ||
+                        subscriptionStatus.equalsIgnoreCase(v.subscription().status().name()))
+                .toList();
     }
 
 }
