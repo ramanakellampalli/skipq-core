@@ -9,6 +9,8 @@ import com.skipq.core.common.PaymentStatus;
 import com.skipq.core.config.AblyService;
 import com.skipq.core.config.FcmService;
 import com.skipq.core.config.RazorpayService;
+import com.skipq.core.discount.PriceResolver;
+import com.skipq.core.discount.ResolvedPrice;
 import com.skipq.core.menu.MenuItem;
 import com.skipq.core.menu.MenuItemRepository;
 import com.skipq.core.menu.MenuVariant;
@@ -58,6 +60,7 @@ public class OrderService {
     private final LedgerService ledgerService;
     private final OrderMapper orderMapper;
     private final OrderTransitionPolicy transitionPolicy;
+    private final PriceResolver priceResolver;
 
     @Value("${app.razorpay.key-id}")
     private String razorpayKeyId;
@@ -115,7 +118,7 @@ public class OrderService {
             }
 
             MenuVariant variant = null;
-            BigDecimal unitPrice = menuItem.getPrice();
+            BigDecimal effectivePrice = menuItem.getPrice();
             String variantLabel = null;
 
             if (itemReq.variantId() != null) {
@@ -124,16 +127,22 @@ public class OrderService {
                 if (!variant.getMenuItem().getId().equals(menuItem.getId())) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Variant does not belong to this menu item");
                 }
-                unitPrice = variant.getPrice();
+                effectivePrice = variant.getPrice();
                 variantLabel = variant.getLabel();
             }
+
+            // Resolve discount server-side — client price is never trusted
+            ResolvedPrice resolved = priceResolver.resolve(menuItem, effectivePrice, LocalDateTime.now());
 
             return OrderItem.builder()
                     .menuItem(menuItem)
                     .variant(variant)
                     .variantLabel(variantLabel)
                     .quantity(itemReq.quantity())
-                    .unitPrice(unitPrice)
+                    .unitPrice(resolved.discountedPrice())
+                    .originalPrice(resolved.originalPrice())
+                    .discountAmount(resolved.discountAmount())
+                    .discount(resolved.discount())
                     .build();
         }).toList();
 

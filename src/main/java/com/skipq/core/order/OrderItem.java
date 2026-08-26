@@ -1,5 +1,6 @@
 package com.skipq.core.order;
 
+import com.skipq.core.discount.Discount;
 import com.skipq.core.menu.MenuItem;
 import com.skipq.core.menu.MenuVariant;
 import jakarta.persistence.*;
@@ -43,4 +44,16 @@ public class OrderItem {
 
     @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal unitPrice;
+
+    @Column(name = "original_price", nullable = false, precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal originalPrice = BigDecimal.ZERO;
+
+    @Column(name = "discount_amount", nullable = false, precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "discount_id")
+    private Discount discount;
 }
