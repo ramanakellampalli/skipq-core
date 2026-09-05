@@ -24,9 +24,9 @@ public class EmailService {
 
     public void sendOtp(String toEmail, String name, String code, OtpPurpose purpose) {
         String subject = switch (purpose) {
-            case VERIFY_EMAIL  -> "Verify your SkipQ account — " + code;
-            case STUDENT_RESET -> "Reset your SkipQ password — " + code;
-            case VENDOR_RESET  -> "Reset your SkipQ Vendor password — " + code;
+            case VERIFY_EMAIL  -> "Verify your SkipQ account";
+            case STUDENT_RESET -> "Reset your SkipQ password";
+            case VENDOR_RESET  -> "Reset your SkipQ Vendor password";
         };
 
         String html = switch (purpose) {
