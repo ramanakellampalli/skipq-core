@@ -40,13 +40,13 @@ public class VendorController {
     }
 
     @GetMapping("/api/v1/vendors")
-    @PreAuthorize("hasAnyRole('STUDENT', 'CUSTOMER', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'GENERAL', 'VENDOR')")
     public List<VendorResponse> getOpenVendors() {
         return vendorService.getOpenVendors();
     }
 
     @GetMapping("/api/v1/vendors/{vendorId}")
-    @PreAuthorize("hasAnyRole('STUDENT', 'CUSTOMER', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'GENERAL', 'VENDOR')")
     public VendorResponse getVendor(@PathVariable UUID vendorId) {
         return vendorService.getById(vendorId);
     }

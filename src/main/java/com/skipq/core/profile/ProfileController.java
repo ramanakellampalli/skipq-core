@@ -18,7 +18,7 @@ public class ProfileController {
     private final ProfileService profileService;
 
     @PutMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('VENDOR', 'STUDENT', 'CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('VENDOR', 'STUDENT', 'GENERAL', 'ADMIN')")
     public Map<String, String> uploadAvatar(
             @RequestParam("file") MultipartFile file,
             @RequestParam("id") UUID id,
