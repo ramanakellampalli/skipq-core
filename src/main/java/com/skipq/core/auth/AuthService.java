@@ -50,7 +50,7 @@ public class AuthService {
                 .email(request.email())
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .phone(request.phone())
-                .role(campus != null ? UserRole.STUDENT : UserRole.CUSTOMER)
+                .role(campus != null ? UserRole.STUDENT : UserRole.GENERAL)
                 .campus(campus)
                 .build();
 
@@ -96,7 +96,7 @@ public class AuthService {
             }
         }
 
-        if (user.getRole() == UserRole.STUDENT && !user.isEmailVerified()) {
+        if ((user.getRole() == UserRole.STUDENT || user.getRole() == UserRole.GENERAL) && !user.isEmailVerified()) {
             log.debug("Student email not verified, sending OTP for user: {}", user.getId());
             otpService.generateAndSend(user, OtpPurpose.VERIFY_EMAIL);
             throw new IllegalStateException("Email not verified. A new OTP has been sent to " + user.getEmail());
@@ -173,7 +173,7 @@ public class AuthService {
             otpService.sendEmail(vendor.getUser().getEmail(), vendor.getUser().getName(), code, OtpPurpose.VENDOR_RESET);
         } else {
             User user = userRepository.findByEmail(request.email())
-                    .filter(u -> u.getRole() == UserRole.STUDENT)
+                    .filter(u -> u.getRole() == UserRole.STUDENT || u.getRole() == UserRole.GENERAL)
                     .orElseThrow(() -> new NoSuchElementException(NO_ACCOUNT_FOUND));
             otpService.generateAndSend(user, OtpPurpose.STUDENT_RESET);
         }
@@ -198,7 +198,7 @@ public class AuthService {
             vendorRepository.save(vendor);
         } else {
             User user = userRepository.findByEmail(request.email())
-                    .filter(u -> u.getRole() == UserRole.STUDENT)
+                    .filter(u -> u.getRole() == UserRole.STUDENT || u.getRole() == UserRole.GENERAL)
                     .orElseThrow(() -> new IllegalArgumentException("Invalid or expired OTP"));
 
             if (!otpService.verify(user, request.otp())) {
