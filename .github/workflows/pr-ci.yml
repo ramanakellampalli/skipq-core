@@ -41,9 +41,19 @@ jobs:
 
       - name: Run Cucumber LDTs
         run: cd e2e && mvn test -B
+        continue-on-error: true
         env:
           LDT_BASE_URL: https://api-dev.ohyeahsaas.com
           LDT_STUDENT_EMAIL: ${{ secrets.LDT_STUDENT_EMAIL }}
           LDT_STUDENT_PASSWORD: ${{ secrets.LDT_STUDENT_PASSWORD }}
           LDT_GENERAL_EMAIL: ${{ secrets.LDT_GENERAL_EMAIL }}
           LDT_GENERAL_PASSWORD: ${{ secrets.LDT_GENERAL_PASSWORD }}
+
+      - name: Post LDT results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: e2e/target/surefire-reports/*.xml
+          check_name: LDT Results
+          comment_title: LDT Results
+          fail_on: test failures
