@@ -17,7 +17,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/student")
-@PreAuthorize("hasRole('STUDENT')")
+@PreAuthorize("hasAnyRole('STUDENT', 'GENERAL')")
 @RequiredArgsConstructor
 public class StudentController {
 

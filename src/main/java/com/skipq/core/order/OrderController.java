@@ -23,7 +23,7 @@ public class OrderController {
 
     @PostMapping("/api/v1/orders")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'GENERAL', 'VENDOR')")
     public PlaceOrderResponse placeOrder(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody PlaceOrderRequest request) {
@@ -31,7 +31,7 @@ public class OrderController {
     }
 
     @PostMapping("/api/v1/orders/{orderId}/cancel")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'GENERAL')")
     public void cancelOrder(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable UUID orderId) {
@@ -39,13 +39,13 @@ public class OrderController {
     }
 
     @GetMapping("/api/v1/orders")
-    @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'GENERAL', 'VENDOR')")
     public List<OrderResponse> getMyOrders(@AuthenticationPrincipal UserDetails userDetails) {
         return orderService.getMyOrders(userId(userDetails));
     }
 
     @GetMapping("/api/v1/orders/{orderId}")
-    @PreAuthorize("hasAnyRole('STUDENT', 'VENDOR')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'GENERAL', 'VENDOR')")
     public OrderResponse getOrder(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable UUID orderId) {
