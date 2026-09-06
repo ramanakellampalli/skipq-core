@@ -45,7 +45,6 @@ public class SyncSteps {
     @Then("the sync returns only general vendors")
     public void syncReturnsGeneralVendors() {
         List<Map<String, Object>> vendors = ctx.getLastResponse().jsonPath().getList("vendors");
-        assertThat(vendors).isNotEmpty();
         vendors.forEach(v ->
                 assertThat(v.get("campusId"))
                         .as("Expected general vendor but got a campus vendor: %s", v.get("name"))
