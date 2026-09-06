@@ -53,7 +53,7 @@ public class MenuItemController {
     // ── Menu browse (student) ─────────────────────────────────────────────────
 
     @GetMapping("/api/v1/vendors/{vendorId}/menu")
-    @PreAuthorize("hasRole('STUDENT')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'GENERAL')")
     public List<MenuItemResponse> getAvailableMenu(@PathVariable UUID vendorId) {
         return menuItemService.getAvailableMenu(vendorId);
     }
