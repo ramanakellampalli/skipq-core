@@ -1,9 +1,8 @@
 -- LDT test account seed
 -- Run this directly in the Neon SQL Editor (dev project).
 --
--- Default password for both accounts: SkipQLDT2026!
--- Update the hashes below if you change the password:
---   python3 -c "import bcrypt; print(bcrypt.hashpw(b'<pwd>', bcrypt.gensalt(10)).decode())"
+-- Replace <STUDENT_HASH> and <GENERAL_HASH> with BCrypt hashes before running.
+-- Generate a hash: python3 -c "import bcrypt; print(bcrypt.hashpw(b'<password>', bcrypt.gensalt(10)).decode())"
 
 -- STUDENT account — campus resolved from srmap.edu.in domain
 INSERT INTO users (id, name, email, password_hash, role, campus_id, email_verified, created_at)
@@ -11,7 +10,7 @@ SELECT
     gen_random_uuid(),
     'LDT Student',
     'student-ldt@srmap.edu.in',
-    '$2b$10$UqEIZPmib1LPB6Db/OGPOeTsDjcxBLhegGtzKhDpbMuseg5zLry5i',
+    '<STUDENT_HASH>',
     'STUDENT',
     (SELECT id FROM campuses WHERE email_domain = 'srmap.edu.in' LIMIT 1),
     true,
@@ -28,7 +27,7 @@ VALUES (
     gen_random_uuid(),
     'LDT General',
     'general-ldt@gmail.com',
-    '$2b$10$UqEIZPmib1LPB6Db/OGPOeTsDjcxBLhegGtzKhDpbMuseg5zLry5i',
+    '<GENERAL_HASH>',
     'GENERAL',
     NULL,
     true,
