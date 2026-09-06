@@ -50,7 +50,7 @@ public class AuthService {
                 .email(request.email())
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .phone(request.phone())
-                .role(UserRole.STUDENT)
+                .role(campus != null ? UserRole.STUDENT : UserRole.CUSTOMER)
                 .campus(campus)
                 .build();
 
