@@ -44,6 +44,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Cucumber PicoContainer — constructor DI for step classes -->
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-picocontainer</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- REST-assured -->
         <dependency>
             <groupId>io.rest-assured</groupId>
