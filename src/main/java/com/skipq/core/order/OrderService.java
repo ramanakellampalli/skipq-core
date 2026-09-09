@@ -71,6 +71,11 @@ public class OrderService {
     @Value("${scheduling.min-lead-minutes:30}")
     private int minLeadMinutes;
 
+    // Same flag that gates ScheduledOrderDispatcher — accepting a scheduled order
+    // we cannot dispatch would take payment for an order no vendor ever sees.
+    @Value("${jobs.scheduled-dispatch.enabled:false}")
+    private boolean schedulingEnabled;
+
     @Transactional
     public PlaceOrderResponse placeOrder(UUID userId, PlaceOrderRequest request) {
         User user = userRepository.findById(userId)
@@ -320,6 +325,11 @@ public class OrderService {
     }
 
     private void validateScheduledPickup(LocalDateTime scheduledPickupAt) {
+        if (!schedulingEnabled) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Scheduled orders are not available right now");
+        }
+
         LocalTime windowStart = LocalTime.parse(schedulingWindowStart);
         LocalTime windowEnd   = LocalTime.parse(schedulingWindowEnd);
         LocalTime pickupTime  = scheduledPickupAt.toLocalTime();

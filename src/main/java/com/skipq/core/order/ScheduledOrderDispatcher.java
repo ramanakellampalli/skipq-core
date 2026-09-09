@@ -12,7 +12,7 @@ import java.util.List;
 
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "jobs.scheduled-dispatch.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "jobs.scheduled-dispatch.enabled", havingValue = "true", matchIfMissing = false)
 @RequiredArgsConstructor
 public class ScheduledOrderDispatcher {
 

@@ -37,6 +37,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -71,6 +72,7 @@ class OrderServiceTest {
         ReflectionTestUtils.setField(orderService, "schedulingWindowStart", "10:00");
         ReflectionTestUtils.setField(orderService, "schedulingWindowEnd", "17:00");
         ReflectionTestUtils.setField(orderService, "minLeadMinutes", 30);
+        ReflectionTestUtils.setField(orderService, "schedulingEnabled", true);
 
         userId   = UUID.randomUUID();
         vendorId = UUID.randomUUID();
@@ -696,6 +698,44 @@ class OrderServiceTest {
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
 
         verifyNoInteractions(razorpayService, orderRepository);
+    }
+
+    @Test
+    void placeOrder_scheduledWhileSchedulingDisabled_throwsBeforeAnyPayment() {
+        ReflectionTestUtils.setField(orderService, "schedulingEnabled", false);
+
+        LocalDateTime pickup = LocalDateTime.now().plusDays(1).withHour(12).withMinute(0).withSecond(0).withNano(0);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
+
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(UUID.randomUUID(), null, 1)), pickup);
+        assertThatThrownBy(() -> orderService.placeOrder(userId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        // No Razorpay order and no persisted row — the customer is never charged
+        verifyNoInteractions(razorpayService, orderRepository);
+    }
+
+    @Test
+    void placeOrder_immediateWhileSchedulingDisabled_succeeds() throws Exception {
+        ReflectionTestUtils.setField(orderService, "schedulingEnabled", false);
+
+        MenuItem item = menuItem(true);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(vendorRepository.findById(vendorId)).thenReturn(Optional.of(vendor));
+        when(vendorRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(menuItemRepository.findById(item.getId())).thenReturn(Optional.of(item));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order o = inv.getArgument(0);
+            o.setId(UUID.randomUUID());
+            return o;
+        });
+        when(razorpayService.createOrder(anyLong(), anyString())).thenReturn("order_rzp123");
+
+        var request = new PlaceOrderRequest(vendorId, List.of(new OrderItemRequest(item.getId(), null, 1)), null);
+        assertThatCode(() -> orderService.placeOrder(userId, request)).doesNotThrowAnyException();
     }
 
     // ── scheduled orders — confirmPayment ─────────────────────────────────────
