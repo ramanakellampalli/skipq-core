@@ -42,6 +42,25 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      # A merge to main redeploys dev and the app takes ~110s to boot. Without
+      # this gate an LDT run landing in that window gets nginx 502s on every
+      # scenario and reports as a code failure.
+      - name: Wait for dev API to be healthy
+        env:
+          LDT_BASE_URL: https://api-dev.ohyeahsaas.com
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$LDT_BASE_URL/actuator/health" || echo "000")
+            if [ "$code" = "200" ]; then
+              echo "dev API healthy after $i attempt(s)"
+              exit 0
+            fi
+            echo "attempt $i/30: got $code — retrying in 10s"
+            sleep 10
+          done
+          echo "::error::dev API did not become healthy within 5 minutes — LDTs not run"
+          exit 1
+
       - name: Run Cucumber LDTs
         run: cd e2e && mvn test -B
         continue-on-error: true
