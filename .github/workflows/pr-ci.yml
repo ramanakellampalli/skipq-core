@@ -24,6 +24,13 @@ jobs:
         env:
           SPRING_PROFILES_ACTIVE: test
 
+      - name: Upload JAR for LDTs
+        uses: actions/upload-artifact@v4
+        with:
+          name: skipq-core-jar
+          path: target/skipq-core-0.0.1-SNAPSHOT.jar
+          retention-days: 1
+
   ldt:
     name: Live Dependency Tests
     runs-on: ubuntu-latest
@@ -42,34 +49,71 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # A merge to main redeploys dev and the app takes ~110s to boot. Without
-      # this gate an LDT run landing in that window gets nginx 502s on every
-      # scenario and reports as a code failure.
-      - name: Wait for dev API to be healthy
+      - name: Download JAR built from this PR
+        uses: actions/download-artifact@v4
+        with:
+          name: skipq-core-jar
+
+      # LDTs used to run against shared dev, which meant they exercised
+      # whatever was on main — not this PR — and failed whenever a merge
+      # redeployed dev underneath them. Running this PR's own jar here gives
+      # a real signal and no cross-PR interference.
+      - name: Start this PR's build
         env:
-          LDT_BASE_URL: https://api-dev.ohyeahsaas.com
+          SPRING_PROFILES_ACTIVE: dev
+          TZ: Asia/Kolkata
+          DEV_DB_URL: ${{ secrets.DEV_DB_URL }}
+          DEV_DB_USERNAME: ${{ secrets.DEV_DB_USERNAME }}
+          DEV_DB_PASSWORD: ${{ secrets.DEV_DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ABLY_API_KEY: ${{ secrets.ABLY_API_KEY }}
+          RAZOR_TEST_ID: ${{ secrets.RAZOR_TEST_ID }}
+          RAZOR_TEST_SECRET: ${{ secrets.RAZOR_TEST_SECRET }}
+          RAZOR_WEBHOOK_SECRET: ${{ secrets.RAZOR_WEBHOOK_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          DEEP_LINK_BASE_URL: ${{ secrets.DEEP_LINK_BASE_URL }}
         run: |
-          for i in $(seq 1 30); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$LDT_BASE_URL/actuator/health" || echo "000")
+          nohup java -jar skipq-core-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
+          echo $! > app.pid
+          echo "started pid $(cat app.pid)"
+
+      - name: Wait for it to be healthy
+        run: |
+          for i in $(seq 1 60); do
+            if ! kill -0 "$(cat app.pid)" 2>/dev/null; then
+              echo "::error::app process died during startup"
+              tail -100 app.log
+              exit 1
+            fi
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:8080/actuator/health || echo "000")
             if [ "$code" = "200" ]; then
-              echo "dev API healthy after $i attempt(s)"
+              echo "healthy after ${i}0s"
               exit 0
             fi
-            echo "attempt $i/30: got $code — retrying in 10s"
             sleep 10
           done
-          echo "::error::dev API did not become healthy within 5 minutes — LDTs not run"
+          echo "::error::app did not become healthy within 10 minutes"
+          tail -100 app.log
           exit 1
 
       - name: Run Cucumber LDTs
         run: cd e2e && mvn test -B
         continue-on-error: true
         env:
-          LDT_BASE_URL: https://api-dev.ohyeahsaas.com
+          LDT_BASE_URL: http://localhost:8080
           LDT_STUDENT_EMAIL: ${{ secrets.LDT_STUDENT_EMAIL }}
           LDT_STUDENT_PASSWORD: ${{ secrets.LDT_STUDENT_PASSWORD }}
           LDT_GENERAL_EMAIL: ${{ secrets.LDT_GENERAL_EMAIL }}
           LDT_GENERAL_PASSWORD: ${{ secrets.LDT_GENERAL_PASSWORD }}
+
+      - name: App logs
+        if: always()
+        run: tail -200 app.log || true
+
+      - name: Stop the app
+        if: always()
+        run: kill "$(cat app.pid)" 2>/dev/null || true
 
       - name: Post LDT results
         uses: EnricoMi/publish-unit-test-result-action@v2
