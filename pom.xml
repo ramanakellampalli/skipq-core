@@ -17,6 +17,9 @@
 
 	<properties>
 		<java.version>21</java.version>
+		<!-- Default so @{argLine} still resolves if surefire is invoked without
+		     jacoco:prepare-agent having run first. -->
+		<argLine></argLine>
 		<sonar.organization>ohyeahsaas</sonar.organization>
 		<sonar.projectKey>ramanakellampalli_skipq-core</sonar.projectKey>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -231,6 +234,18 @@
 							<artifactId>lombok</artifactId>
 						</path>
 					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<!-- CI runners are UTC; prod runs IST. Pin the test JVM so
+					     wall-clock assertions behave the same in both.
+					     @{argLine} preserves the JaCoCo agent that prepare-agent
+					     sets on the same property — a static value would silently
+					     disable coverage. -->
+					<argLine>@{argLine} -Duser.timezone=Asia/Kolkata</argLine>
 				</configuration>
 			</plugin>
 			<plugin>
