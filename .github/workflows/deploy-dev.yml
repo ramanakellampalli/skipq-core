@@ -48,6 +48,7 @@ jobs:
           ssh -i ~/.ssh/oracle-dev.key ubuntu@${{ secrets.ORACLE_DEV_HOST }} << 'EOF'
           cat > /home/ubuntu/skipq/.env << ENVEOF
           SPRING_PROFILES_ACTIVE=dev
+          TZ=Asia/Kolkata
           DEV_DB_URL=${{ secrets.DEV_DB_URL }}
           DEV_DB_USERNAME=${{ secrets.DEV_DB_USERNAME }}
           DEV_DB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}

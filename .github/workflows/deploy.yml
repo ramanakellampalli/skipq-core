@@ -58,6 +58,7 @@ jobs:
           ssh -i ~/.ssh/oracle-prod.key ubuntu@${{ secrets.ORACLE_PROD_HOST }} << 'EOF'
           cat > /home/ubuntu/skipq/.env << ENVEOF
           SPRING_PROFILES_ACTIVE=prod
+          TZ=Asia/Kolkata
           PROD_DB_URL=${{ secrets.PROD_DB_URL }}
           PROD_DB_USERNAME=${{ secrets.PROD_DB_USERNAME }}
           PROD_DB_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
