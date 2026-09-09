@@ -19,7 +19,7 @@ public class ScheduledOrderDispatcher {
     private final OrderRepository orderRepository;
     private final OrderService orderService;
 
-    @Scheduled(cron = "${jobs.scheduled-dispatch.cron:0 * 9-16 * * *}")
+    @Scheduled(cron = "${jobs.scheduled-dispatch.cron:0 * 9-16 * * *}", zone = "Asia/Kolkata")
     @SchedulerLock(name = "scheduled_order_dispatch", lockAtMostFor = "PT55S")
     public void dispatchDueOrders() {
         LocalDateTime cutoff = LocalDateTime.now().plusMinutes(15);
