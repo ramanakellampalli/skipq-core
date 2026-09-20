@@ -10,5 +10,7 @@ public record OrderItemResponse(
         String variantLabel,
         int quantity,
         BigDecimal unitPrice,
-        BigDecimal subtotal
+        BigDecimal subtotal,
+        BigDecimal originalPrice,
+        BigDecimal discountAmount
 ) {}
